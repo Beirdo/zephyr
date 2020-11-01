@@ -1,0 +1,28 @@
+# MCP23017 GPIO configuration options
+
+# Copyright (c) 2016 Intel Corporation
+# Copyright (c) 2020 Gavin Hurlbut
+# SPDX-License-Identifier: Apache-2.0
+
+menuconfig GPIO_MCP23017
+	bool "MCP23017 I2C-based GPIO chip"
+	depends on I2C
+	help
+	  Enable driver for MCP23017 I2C-based GPIO chip.
+
+config GPIO_MCP23017_INIT_PRIORITY
+	int "Init priority"
+	default 70
+	depends on GPIO_PCA95XX
+	help
+	  Device driver initialization priority.
+
+config GPIO_MCP23017_INTERRUPT
+	bool "Interrupt enable"
+	default n
+	depends on GPIO_PCA95XX
+	help
+	  Enable interrupt support in MCP23017 driver.
+	  Note that the MCP23017 driver has the two interrupts
+	  mirrored (wired-AND, active-low) internally so both will
+	  trigger on IO changes for either port.
