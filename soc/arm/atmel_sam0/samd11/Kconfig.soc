@@ -1,0 +1,22 @@
+# Atmel SAMD11 MCU series
+
+# Copyright (c) 2020 Gavin Hurlbut
+# SPDX-License-Identifier: Apache-2.0
+
+choice
+	prompt "Atmel SAMD11 MCU Selection"
+	depends on SOC_SERIES_SAMD11
+
+config SOC_PART_NUMBER_SAMD11C14A
+	bool "SAMD11C14A"
+
+config SOC_PART_NUMBER_SAMD11D14AM
+	bool "SAMD11D14AM"
+
+config SOC_PART_NUMBER_SAMD11D14AS
+	bool "SAMD11D14AS"
+
+config SOC_PART_NUMBER_SAMD11D14AU
+	bool "SAMD11D14AU"
+
+endchoice

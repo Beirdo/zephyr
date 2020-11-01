@@ -1,0 +1,23 @@
+# Atmel SAMD11 MCU series configuration options
+
+# Copyright (c) 2020 Gavin Hurlbut
+# SPDX-License-Identifier: Apache-2.0
+
+if SOC_SERIES_SAMD11
+
+config SOC_SERIES
+	default "samd11"
+
+config SOC_PART_NUMBER
+	default "samd11c14a" if SOC_PART_NUMBER_SAMD11C14A
+	default "samd11d14am" if SOC_PART_NUMBER_SAMD11D14AM
+	default "samd11d14as" if SOC_PART_NUMBER_SAMD11D14AS
+	default "samd11d14au" if SOC_PART_NUMBER_SAMD11D14AU
+
+config NUM_IRQS
+	default 28
+
+config SYS_CLOCK_HW_CYCLES_PER_SEC
+	default 48000000
+
+endif # SOC_SERIES_SAMD11
