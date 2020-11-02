@@ -66,8 +66,6 @@ struct gpio_mcp23017_drv_config {
 
 	gpio_flags_t int_gpio_flags;
 #endif
-	
-	const uint32_t freq;
 };
 
 /** Runtime driver data */

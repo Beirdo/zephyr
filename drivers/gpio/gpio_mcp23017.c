@@ -635,7 +635,7 @@ static const struct gpio_mcp23017_drv_config gpio_mcp23017_##inst##_cfg = {	\
 	},																		\
 	.i2c_master_dev_name = DT_INST_BUS_LABEL(inst),							\
 	.i2c_slave_addr = DT_INST_REG_ADDR(inst),								\
-	IF_ENABLED(CONFIG_GPIO_PCA95XX_INTERRUPT, (								\
+	IF_ENABLED(CONFIG_GPIO_MCP23017_INTERRUPT, (							\
 	IF_ENABLED(DT_INST_NODE_HAS_PROP(inst, interrupt_gpios), (				\
 	.int_gpio_port = DT_INST_GPIO_LABEL(inst, interrupt_gpios),				\
 	.int_gpio_pin = DT_INST_GPIO_PIN(inst, interrupt_gpios),				\
@@ -656,7 +656,7 @@ static struct gpio_mcp23017_drv_data gpio_mcp23017_##inst##_drvdata = {		\
 		.reg_cache.intcap = 0x0,											\
 		.reg_cache.gpio = 0x0,												\
 		.reg_cache.olat = 0x0,												\
-	IF_ENABLED(CONFIG_GPIO_PCA95XX_INTERRUPT, (								\
+	IF_ENABLED(CONFIG_GPIO_MCP23017_INTERRUPT, (							\
   		.interrupt_active = false,											\
 	))																		\
 };																			\

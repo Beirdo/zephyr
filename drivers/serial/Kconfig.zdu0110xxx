@@ -1,0 +1,56 @@
+# SPDX-License-Identifier: Apache-2.0
+
+config UART_ZDU0110XXX
+	depends on I2C
+	bool "ZDU0110XXX UART driver"
+	select SERIAL_HAS_DRIVER
+	select SERIAL_SUPPORT_INTERRUPT
+	select SERIAL_HAS_LINE_CTRL
+	help
+	  This option enables the ZDU0110xxx UART over I2C driver.
+	  
+if UART_ZDU0110XXX
+
+choice
+    prompt "Flow Control type"
+	default UART_ZDU0110XXX_FLOW_CONTROL_NONE
+    
+    config UART_ZDU0110XXX_FLOW_CONTROL_SOFTWARE
+        bool "Software (XON/XOFF)"
+        
+    config UART_ZDU0110XXX_FLOW_CONTROL_HARDWARE
+        bool "Hardware (CTS/RTS)"
+        
+    config UART_ZDU0110XXX_FLOW_CONTROL_NONE
+		bool "None"
+		
+endchoice
+
+config UART_ZDU0110XXX_INIT_PRIORITY
+	int "Init priority"
+	default 80
+	help
+	  ZDU0110xxx UART device driver initialization priority.
+
+config UART_ZDU0110XXX_GPIO
+	bool "Enable ZDU0110xxx GPIO support"
+	depends on GPIO
+	select GPIO_ZDU0110XXX
+	help
+	  Enable GPIO child device support in the ZDU0110xxx UART driver.
+
+	  The GPIO functionality is handled by the ZDU0110xxx GPIO
+	  driver.
+
+config UART_ZDU0110XXX_EEPROM
+	bool "Enable ZDU0110xxx EEPROM support"
+	depends on EEPROM
+	select EEPROM_ZDU0110XXX
+	help
+	  Enable EEPROM child device support in the ZDU0110xxx UART driver.
+
+	  The EEPROM functionality is handled by the ZDU0110xxx EEPROM
+	  driver.
+
+endif # UART_ZDU0110XXX
+

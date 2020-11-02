@@ -1,0 +1,24 @@
+# ZDU0110xxx EEPROM configuration options
+
+# Copyright (c) 2020 Gavin Hurlbut
+# SPDX-License-Identifier: Apache-2.0
+
+menuconfig EEPROM_ZDU0110XXX
+	bool "ZDU0110xxx EEPROM driver"
+	depends on EEPROM
+	depends on UART_ZDU0110XXX_EEPROM
+	help
+	  Enable EEPROM driver for ZDU0110xxx.
+
+	  The ZDU0110xxx is a family of I2C connected UARTs.
+
+	  The ZDU0110xxx UART integrates in a 512 byte EEPROM,
+	  implemented as 16 pages of 32 bytes.
+
+config EEPROM_ZDU0110_INIT_PRIORITY
+	int "Driver init priority"
+	default 99
+	depends on EEPROM_ZDU0110XXX
+	help
+	  Device driver initialization priority. This driver must be
+	  initialized after the ZDU0110XXX UART driver.
