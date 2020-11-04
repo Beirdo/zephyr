@@ -44,9 +44,9 @@ static int read_port_regs(const struct device *dev, uint8_t reg,
 			  uint16_t *cache, uint16_t *buf)
 {
 	const struct gpio_mcp23017_drv_config * const config = dev->config;
-	struct gpio_mcp23017_drv_data * const drv_data =
+	struct gpio_mcp23017_drv_data * const data =
 		(struct gpio_mcp23017_drv_data * const)dev->data;
-	const struct device *i2c_master = drv_data->i2c_master;
+	const struct device *i2c_master = data->i2c_master;
 	uint16_t i2c_addr = config->i2c_slave_addr;
 	uint16_t port_data, value;
 	int ret;
@@ -86,9 +86,9 @@ static int write_port_regs(const struct device *dev, uint8_t reg,
 			   uint16_t *cache, uint16_t value)
 {
 	const struct gpio_mcp23017_drv_config * const config = dev->config;
-	struct gpio_mcp23017_drv_data * const drv_data =
+	struct gpio_mcp23017_drv_data * const data =
 		(struct gpio_mcp23017_drv_data * const)dev->data;
-	const struct device *i2c_master = drv_data->i2c_master;
+	const struct device *i2c_master = data->i2c_master;
 	uint16_t i2c_addr = config->i2c_slave_addr;
 	uint16_t port_data;
 	int ret;
@@ -122,10 +122,10 @@ static int write_port_regs(const struct device *dev, uint8_t reg,
  */
 static int setup_pin_dir(const struct device *dev, uint32_t pin, int flags)
 {
-	struct mcp23017_drv_data *const drv_data =
+	struct mcp23017_drv_data *const data =
 		(struct mcp23017_drv_data *const)dev->data;
-	uint16_t *dir = &drv_data->reg_cache.iodir;
-	uint16_t *output = &drv_data->reg_cache.gpio;
+	uint16_t *dir = &data->reg_cache.iodir;
+	uint16_t *output = &data->reg_cache.gpio;
 	int ret;
 
 	if ((flags & GPIO_OUTPUT) != 0U) {
@@ -139,12 +139,12 @@ static int setup_pin_dir(const struct device *dev, uint32_t pin, int flags)
 		*dir |= BIT(pin);
 	}
 
-	ret = write_port_regs(dev, REG_GPIO_PORTA, &drv_data->reg_cache.gpio, *output);
+	ret = write_port_regs(dev, REG_GPIO_PORTA, &data->reg_cache.gpio, *output);
 	if (ret != 0) {
 		return ret;
 	}
 
-	return write_port_regs(dev, REG_IODIR_PORTA, &drv_data->reg_cache.iodir, *dir);
+	return write_port_regs(dev, REG_IODIR_PORTA, &data->reg_cache.iodir, *dir);
 }
 
 /**
@@ -159,13 +159,13 @@ static int setup_pin_dir(const struct device *dev, uint32_t pin, int flags)
 static int setup_pin_pullupdown(const struct device *dev, uint32_t pin,
 				int flags)
 {
-	struct mcp23017_drv_data *const drv_data =
+	struct mcp23017_drv_data *const data =
 		(struct mcp23017_drv_data *const)dev->data;
 	uint16_t port;
 	int ret;
 
 	/* Setup pin pull up or pull down */
-	port = drv_data->reg_cache.gppu;
+	port = data->reg_cache.gppu;
 
 	/* pull down == 0, pull up == 1 */
 	if ((flags & GPIO_PULL_DOWN) != 0U) {
@@ -174,7 +174,7 @@ static int setup_pin_pullupdown(const struct device *dev, uint32_t pin,
 
 	WRITE_BIT(port, pin, (flags & GPIO_PULL_UP) != 0U);
 
-	return write_port_regs(dev, REG_GPPU_PORTA, &drv_data->reg_cache.gppu, port);
+	return write_port_regs(dev, REG_GPPU_PORTA, &data->reg_cache.gppu, port);
 }
 
 
@@ -191,7 +191,7 @@ static int gpio_mcp23017_config(const struct device *dev,
 			       gpio_pin_t pin, gpio_flags_t flags)
 {
 	int ret;
-	struct gpio_mcp23017_drv_data * const drv_data =
+	struct gpio_mcp23017_drv_data * const data =
 		(struct gpio_mcp23017_drv_data * const)dev->data;
 
 #if (CONFIG_GPIO_LOG_LEVEL >= LOG_LEVEL_DEBUG)
@@ -216,7 +216,7 @@ static int gpio_mcp23017_config(const struct device *dev,
 		return -EWOULDBLOCK;
 	}
 
-	k_sem_take(&drv_data->lock, K_FOREVER);
+	k_sem_take(&data->lock, K_FOREVER);
 
 	ret = setup_pin_dir(dev, pin, flags);
 	if (ret) {
@@ -233,14 +233,14 @@ static int gpio_mcp23017_config(const struct device *dev,
 	}
 
 done:
-	k_sem_give(&drv_data->lock);
+	k_sem_give(&data->lock);
 	return ret;
 }
 
 static int gpio_mcp23017_port_get_raw(const struct device *dev,
 				     uint32_t *value)
 {
-	struct gpio_mcp23017_drv_data * const drv_data =
+	struct gpio_mcp23017_drv_data * const data =
 		(struct gpio_23017_drv_data * const)dev->data;
 	uint16_t buf;
 	int ret;
@@ -250,22 +250,22 @@ static int gpio_mcp23017_port_get_raw(const struct device *dev,
 		return -EWOULDBLOCK;
 	}
 
-	k_sem_take(&drv_data->lock, K_FOREVER);
+	k_sem_take(&data->lock, K_FOREVER);
 
 	ret = read_port_regs(dev, REG_GPIO_PORTA,
-			      &drv_data->reg_cache.gpio, &buf);
+			      &data->reg_cache.gpio, &buf);
 	if (ret == 0) {
 		*value = buf;
 	}
 
-	k_sem_give(&drv_data->lock);
+	k_sem_give(&data->lock);
 	return ret;
 }
 
 static int gpio_mcp23017_port_set_masked_raw(const struct device *dev,
 					      uint32_t mask, uint32_t value)
 {
-	struct gpio_mcp23017_drv_data * const drv_data =
+	struct gpio_mcp23017_drv_data * const data =
 		(struct gpio_mcp23017_drv_data * const)dev->data;
 	uint16_t reg_out;
 	int ret;
@@ -275,15 +275,15 @@ static int gpio_mcp23017_port_set_masked_raw(const struct device *dev,
 		return -EWOULDBLOCK;
 	}
 
-	k_sem_take(&drv_data->lock, K_FOREVER);
+	k_sem_take(&data->lock, K_FOREVER);
 
-	reg_out = drv_data->reg_cache.gpio;
+	reg_out = data->reg_cache.gpio;
 	reg_out = (reg_out & ~mask) | (mask & value);
 
 	ret = write_port_regs(dev, REG_GPIO_PORTA,
-			       &drv_data->reg_cache.gpio, reg_out);
+			       &data->reg_cache.gpio, reg_out);
 
-	k_sem_give(&drv_data->lock);
+	k_sem_give(&data->lock);
 
 	return ret;
 }
@@ -301,7 +301,7 @@ static int gpio_mcp23017_port_clear_bits_raw(const struct device *dev,
 
 static int gpio_mcp23017_port_toggle_bits(const struct device *dev, uint32_t mask)
 {
-	struct mcp23017_drv_data *const drv_data =
+	struct mcp23017_drv_data *const data =
 		(struct mcp23017_drv_data *const)dev->data;
 	uint16_t buf;
 	int ret;
@@ -311,15 +311,15 @@ static int gpio_mcp23017_port_toggle_bits(const struct device *dev, uint32_t mas
 		return -EWOULDBLOCK;
 	}
 
-	k_sem_take(&drv_data->lock, K_FOREVER);
+	k_sem_take(&data->lock, K_FOREVER);
 
-	reg_out = drv_data->reg_cache.gpio;
+	reg_out = data->reg_cache.gpio;
 	reg_out ^= mask;
 
 	ret = write_port_regs(dev, REG_GPIO_PORTA,
-			       &drv_data->reg_cache.gpio, reg_out);
+			       &data->reg_cache.gpio, reg_out);
 
-	k_sem_give(&drv_data->lock);
+	k_sem_give(&data->lock);
 
 	return ret;
 }
@@ -328,7 +328,7 @@ static int gpio_mcp23017_port_toggle_bits(const struct device *dev, uint32_t mas
 #ifdef CONFIG_GPIO_MCP23017_INTERRUPT
 static void gpio_mcp23107_interrupt_worker(struct k_work *work)
 {
-	struct gpio_mcp23017_drv_data * const drv_data = CONTAINER_OF(
+	struct gpio_mcp23017_drv_data * const data = CONTAINER_OF(
 		work, struct gpio_mcp23017_drv_data, interrupt_worker);
 	uint16_t input_new, input_cache, changed_pins, trig_edge;
 	uint16_t trig_level = 0;
@@ -336,17 +336,17 @@ static void gpio_mcp23107_interrupt_worker(struct k_work *work)
 	uint16_t enabled_int = 0;
 	int ret;
 
-	k_sem_take(&drv_data->lock, K_FOREVER);
+	k_sem_take(&data->lock, K_FOREVER);
 
-    const struct device *dev = drv_data->instance;
-	input_cache = drv_data->reg_cache.gpio;
+    const struct device *dev = data->instance;
+	input_cache = data->reg_cache.gpio;
 
 	ret = read_port_regs(dev, REG_GPIO_PORTA,
-			      &drv_data->reg_cache.gpio, &input_new);
+			      &data->reg_cache.gpio, &input_new);
 
 	if (ret == 0) {
 		ret = read_port_regs(dev, REG_GPINTEN_PORTA,
-					&drv_data->reg_cache.gpinten, &enabled_int);
+					&data->reg_cache.gpinten, &enabled_int);
 	}
 
 	if (ret == 0) {
@@ -355,29 +355,29 @@ static void gpio_mcp23107_interrupt_worker(struct k_work *work)
 		changed_pins = (input_cache ^ input_new);
 
 		trig_edge = (changed_pins & input_new &
-			     drv_data->interrupts.edge_rising);
+			     data->interrupts.edge_rising);
 		trig_edge |= (changed_pins & input_cache &
-			      drv_data->interrupts.edge_falling);
-		trig_edge |= (changed_pins & drv_data->interrupts.edge_both);
+			      data->interrupts.edge_falling);
+		trig_edge |= (changed_pins & data->interrupts.edge_both);
 		trig_edge &= enabled_int;
 
-		trig_level = (input_new & drv_data->interrupts.level_high);
-		trig_level |= (~input_new & drv_data->interrupts.level_low);
+		trig_level = (input_new & data->interrupts.level_high);
+		trig_level |= (~input_new & data->interrupts.level_low);
 		trig_level &= enabled_int;
 
 		triggered_int = trig_edge | trig_level;
 	}
 
-	k_sem_give(&drv_data->lock);
+	k_sem_give(&data->lock);
 
 	if (triggered_int != 0) {
-		gpio_fire_callbacks(&drv_data->callbacks, dev, triggered_int);
+		gpio_fire_callbacks(&data->callbacks, dev, triggered_int);
 	}
 
 	/* Emulate level triggering */
 	if (trig_level != 0) {
 		/* Reschedule worker */
-		k_work_submit(&drv_data->interrupt_worker);
+		k_work_submit(&data->interrupt_worker);
 	}
 }
 
@@ -385,13 +385,13 @@ static void gpio_mcp23017_interrupt_callback(const struct device *dev,
 					    struct gpio_callback *cb,
 					    gpio_port_pins_t pins)
 {
-	struct gpio_mcp23017_drv_data * const drv_data =
+	struct gpio_mcp23017_drv_data * const data =
 		CONTAINER_OF(cb, struct gpio_mcp23017_drv_data, gpio_callback);
 
 	ARG_UNUSED(pins);
 
 	/* Cannot read MCP23017 registers from ISR context, queue worker */
-	k_work_submit(&drv_data->interrupt_worker);
+	k_work_submit(&data->interrupt_worker);
 }
 #endif /* CONFIG_GPIO_MCP23017_INTERRUPT */
 
@@ -409,7 +409,7 @@ static int gpio_mcp23017_pin_interrupt_configure(const struct device *dev,
 
 #ifdef CONFIG_GPIO_MCP23017_INTERRUPT
 	const struct gpio_mcp23017_drv_config * const config = dev->config;
-	struct gpio_mcp23017_drv_data * const drv_data =
+	struct gpio_mcp23017_drv_data * const data =
 		(struct gpio_mcp23017_drv_data * const)dev->data;
 	const struct device *int_gpio_dev;
 	uint16_t reg;
@@ -422,45 +422,45 @@ static int gpio_mcp23017_pin_interrupt_configure(const struct device *dev,
 
 	/* Check configured pin direction */
 	if ((mode != GPIO_INT_MODE_DISABLED) &&
-	    (BIT(pin) & drv_data->reg_cache.iodir) != BIT(pin)) {
+	    (BIT(pin) & data->reg_cache.iodir) != BIT(pin)) {
 		LOG_ERR("MCP23017[0x%X]: output pin cannot trigger interrupt",
 			config->i2c_slave_addr);
 		return -ENOTSUP;
 	}
 
-	k_sem_take(&drv_data->lock, K_FOREVER);
+	k_sem_take(&data->lock, K_FOREVER);
 
 	/* Update interrupt masks */
 	enabled = ((mode & GPIO_INT_MODE_DISABLED) == 0U);
 	edge = (mode == GPIO_INT_MODE_EDGE);
 	level = (mode == GPIO_INT_MODE_LEVEL);
 	
-	WRITE_BIT(drv_data->interrupts.edge_rising, pin, (enabled &&
+	WRITE_BIT(data->interrupts.edge_rising, pin, (enabled &&
 		edge && ((trig & GPIO_INT_TRIG_HIGH) == GPIO_INT_TRIG_HIGH)));
-	WRITE_BIT(drv_data->interrupts.edge_falling, pin, (enabled &&
+	WRITE_BIT(data->interrupts.edge_falling, pin, (enabled &&
 		edge && ((trig & GPIO_INT_TRIG_LOW) == GPIO_INT_TRIG_LOW)));
-	WRITE_BIT(drv_data->interrupts.edge_both, pin, (enabled &&
+	WRITE_BIT(data->interrupts.edge_both, pin, (enabled &&
 		edge && ((trig & GPIO_INT_TRIG_BOTH) == GPIO_INT_TRIG_BOTH)));
 		
-	WRITE_BIT(drv_data->interrupts.level_high, pin, (enabled &&
+	WRITE_BIT(data->interrupts.level_high, pin, (enabled &&
 		level && ((trig & GPIO_INT_TRIG_HIGH) == GPIO_INT_TRIG_HIGH)));
-	WRITE_BIT(drv_data->interrupts.level_low, pin, (enabled &&
+	WRITE_BIT(data->interrupts.level_low, pin, (enabled &&
 		level && ((trig & GPIO_INT_TRIG_LOW) == GPIO_INT_TRIG_LOW)));
 
-	active = ((drv_data->interrupts.edge_rising |
-		   drv_data->interrupts.edge_falling |
-		   drv_data->interrupts.edge_both |
-		   drv_data->interrupts.level_high |
-		   drv_data->interrupts.level_low) != 0);
+	active = ((data->interrupts.edge_rising |
+		   data->interrupts.edge_falling |
+		   data->interrupts.edge_both |
+		   data->interrupts.level_high |
+		   data->interrupts.level_low) != 0);
 
 	/* Enable / disable interrupt as needed */
-	if (active != drv_data->interrupt_active) {
+	if (active != data->interrupt_active) {
 		if (active) {
 			/* Read current status to reset any
 			 * active signal on INT line
 			 */
 			ret = read_port_regs(dev, REG_GPIO_PORTA,
-				      &drv_data->reg_cache.gpio, &reg);
+				      &data->reg_cache.gpio, &reg);
 		}
 
 		if (ret != 0) {
@@ -483,7 +483,7 @@ static int gpio_mcp23017_pin_interrupt_configure(const struct device *dev,
 		}
 		
 		ret = write_port_regs(dev, REG_GPINTEN_PORTA,
-			       &drv_data->reg_cache.gpinten, active);
+			       &data->reg_cache.gpinten, active);
 
 		if (ret != 0) {
 			LOG_ERR("MCP23017[0x%X]: failed to configure interrupts "
@@ -499,11 +499,11 @@ static int gpio_mcp23017_pin_interrupt_configure(const struct device *dev,
 			/* Set IOCON to mirror the interrupts (i.e. both interrupt pins are
 			 * for both ports) 
 			 */
-			iocon_val = drv_data->reg_cache.iocon;
+			iocon_val = data->reg_cache.iocon;
 			iocon_val |= 0x4040;
 			
 			ret = write_port_regs(dev, REG_IOCON_PORTA, 
-					&drv_data->reg_cache.iocon, iocon_val);
+					&data->reg_cache.iocon, iocon_val);
 					
 			if (ret != 0) {
 				LOG_ERR("MCP23017[0x%X]: failed to configure interrupt "
@@ -525,10 +525,10 @@ static int gpio_mcp23017_pin_interrupt_configure(const struct device *dev,
 			}
 		}
 
-		drv_data->interrupt_active = active;
+		data->interrupt_active = active;
 	}
 
-	k_sem_give(&drv_data->lock);
+	k_sem_give(&data->lock);
 #endif /* CONFIG_GPIO_MCP23017_INTERRUPT */
 	return ret;
 }
@@ -539,14 +539,14 @@ static int gpio_mcp23017_manage_callback(const struct device *dev,
 					bool set)
 {
 	const struct gpio_mcp23017_drv_config * const config = dev->config;
-	struct gpio_mcp23017_drv_data * const drv_data =
+	struct gpio_mcp23017_drv_data * const data =
 		(struct gpio_mcp23017_drv_data * const)dev->data;
 
-	k_sem_take(&drv_data->lock, K_FOREVER);
+	k_sem_take(&data->lock, K_FOREVER);
 
-	gpio_manage_callback(&drv_data->callbacks, callback, set);
+	gpio_manage_callback(&data->callbacks, callback, set);
 
-	k_sem_give(&drv_data->lock);
+	k_sem_give(&data->lock);
 	return 0;
 }
 #endif
@@ -574,7 +574,7 @@ static const struct gpio_driver_api gpio_mcp23017_drv_api_funcs = {
 static int gpio_mcp23017_init(const struct device *dev)
 {
 	const struct gpio_mcp23017_drv_config * const config = dev->config;
-	struct gpio_mcp23017_drv_data * const drv_data =
+	struct gpio_mcp23017_drv_data * const data =
 		(struct gpio_mcp23017_drv_data * const)dev->data;
 	const struct device *i2c_master;
 #ifdef CONFIG_GPIO_MCP23017_INTERRUPT
@@ -587,16 +587,16 @@ static int gpio_mcp23017_init(const struct device *dev)
 	if (!i2c_master) {
 		return -EINVAL;
 	}
-	drv_data->i2c_master = i2c_master;
+	data->i2c_master = i2c_master;
 
-	k_sem_init(&drv_data->lock, 1, 1);
+	k_sem_init(&data->lock, 1, 1);
 
 #ifdef CONFIG_GPIO_MCP23017_INTERRUPT
 	/* Store self-reference for interrupt handling */
-	drv_data->instance = dev;
+	data->instance = dev;
 
 	/* Prepare interrupt worker */
-	k_work_init(&drv_data->interrupt_worker,
+	k_work_init(&data->interrupt_worker,
 		    gpio_mcp23017_interrupt_worker);
 
 	/* Configure GPIO interrupt pin */
@@ -618,10 +618,10 @@ static int gpio_mcp23017_init(const struct device *dev)
 	}
 
 	/* Prepare GPIO callback for interrupt pin */
-	gpio_init_callback(&drv_data->gpio_callback,
+	gpio_init_callback(&data->gpio_callback,
 			   gpio_mcp23017_interrupt_callback,
 			   BIT(config->int_gpio_pin));
-	gpio_add_callback(int_gpio_dev, &drv_data->gpio_callback);
+	gpio_add_callback(int_gpio_dev, &data->gpio_callback);
 #endif
 
 	return 0;

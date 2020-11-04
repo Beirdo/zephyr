@@ -1,0 +1,36 @@
+# MCP320x ADC configuration options
+
+# Copyright (c) 2020 Gavin Hurlbut
+# SPDX-License-Identifier: Apache-2.0
+
+config ADC_MCP342X
+	bool "MCP3425/3426/3427/3428 driver"
+	depends on I2C
+	help
+	  Enable MCP342x ADC driver.
+
+	  The MCP342x a family of 12/14/16-bit Delta-Sigma A/D converters
+	  with 1/2/4 inputs and I2C interface.
+
+if ADC_MCP342X
+
+config ADC_MCP342X_INIT_PRIORITY
+	int "Init priority"
+	default 80
+	help
+	  MCP342x ADC device driver initialization priority.
+
+config ADC_MCP342X_ACQUISITION_THREAD_STACK_SIZE
+	int "Stack size for the ADC data acquisition thread"
+	default 256
+	help
+	  Size of the stack used for the internal data acquisition
+	  thread.
+
+config ADC_MCP342X_ACQUISITION_THREAD_PRIO
+	int "Priority for the ADC data acquisition thread"
+	default 0
+	help
+	  Priority level for the internal ADC data acquisition thread.
+
+endif # ADC_MCP342X

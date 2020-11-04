@@ -105,9 +105,9 @@ int zdu0110xxx_send_command(const struct device *dev,
                 uint8_t *rsp_buf, size_t rsp_buf_len) 
 {
 	const struct uart_zdu0110xxx_drv_config * const config = dev->config;
-	struct uart_zdu0110xxx_dev_data_t * const drv_data =
+	struct uart_zdu0110xxx_dev_data_t * const data =
 		(struct uart_zdu0110xxx_dev_data_t * const)dev->data;
-	const struct device *i2c_master = drv_data->i2c_master;
+	const struct device *i2c_master = data->i2c_master;
 	uint16_t i2c_addr = config->i2c_slave_addr;
 	int ret;
 	size_t read_len = 0;

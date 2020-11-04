@@ -393,20 +393,20 @@ static void gpio_zdu0110xxx_interrupt_worker(struct k_work *work)
 		/* Note: MCP23017 Interrupt status is cleared by reading status */
 
 		trig_edge = (changed_pins & input_new &
-			     drv_data->interrupts.edge_rising);
+			     data->interrupts.edge_rising);
 		trig_edge |= (changed_pins & input_cache &
-			      drv_data->interrupts.edge_falling);
-		trig_edge |= (changed_pins & drv_data->interrupts.edge_both);
+			      data->interrupts.edge_falling);
+		trig_edge |= (changed_pins & data->interrupts.edge_both);
 		trig_edge &= enabled_int;
 
-		trig_level = (input_new & drv_data->interrupts.level_high);
-		trig_level |= (~input_new & drv_data->interrupts.level_low);
+		trig_level = (input_new & data->interrupts.level_high);
+		trig_level |= (~input_new & data->interrupts.level_low);
 		trig_level &= enabled_int;
 
 		triggered_int = trig_edge | trig_level;
 	}
 
-	k_sem_give(&drv_data->lock);
+	k_sem_give(&data->lock);
 
 	if (triggered_int != 0) {
 		gpio_fire_callbacks(&data->callbacks, dev, triggered_int);
