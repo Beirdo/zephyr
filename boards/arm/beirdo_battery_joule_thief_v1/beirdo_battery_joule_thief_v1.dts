@@ -1,0 +1,314 @@
+/*
+ * Copyright (c) 2020 Gavin Hurlbut
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/dts-v1/;
+#include <atmel/samd11.dtsi>
+
+/ {
+	model = "Beirdo's Battery Joule Thief v1";
+	compatible = "beirdo,battery_joule_thief_v1", "atmel,samd11c14a", "atmel,samd11";
+
+	chosen {
+		zephyr,console = &uart0;
+		zephyr,shell-uart = &uart0;
+		zephyr,sram = &sram0;
+		zephyr,flash = &flash0;
+	};
+
+	aliases {
+		i2c-0 = &sercom1;
+	};
+
+	leds {
+		compatible = "gpio-leds";
+		
+		led_1ag {
+			gpios = <&ioexp0 9 GPIO_ACTIVE_LOW>;
+			label = "LED 1a Green";
+		};
+
+		led_1ar {
+			gpios = <&ioexp0 8 GPIO_ACTIVE_LOW>;
+			label = "LED 1a Red";
+		};
+
+		led_1bg {
+			gpios = <&ioexp0 11 GPIO_ACTIVE_LOW>;
+			label = "LED 1b Green";
+		};
+
+		led_1br {
+			gpios = <&ioexp0 10 GPIO_ACTIVE_LOW>;
+			label = "LED 1b Red";
+		};
+
+	
+		led_2ag {
+			gpios = <&ioexp1 9 GPIO_ACTIVE_LOW>;
+			label = "LED 2a Green";
+		};
+
+		led_2ar {
+			gpios = <&ioexp1 8 GPIO_ACTIVE_LOW>;
+			label = "LED 2a Red";
+		};
+
+		led_2bg {
+			gpios = <&ioexp1 11 GPIO_ACTIVE_LOW>;
+			label = "LED 2b Green";
+		};
+
+		led_2br {
+			gpios = <&ioexp1 10 GPIO_ACTIVE_LOW>;
+			label = "LED 2b Red";
+		};
+
+
+		led_3ag {
+			gpios = <&ioexp2 9 GPIO_ACTIVE_LOW>;
+			label = "LED 3a Green";
+		};
+
+		led_3ar {
+			gpios = <&ioexp2 8 GPIO_ACTIVE_LOW>;
+			label = "LED 3a Red";
+		};
+
+		led_3bg {
+			gpios = <&ioexp2 11 GPIO_ACTIVE_LOW>;
+			label = "LED 3b Green";
+		};
+
+		led_3br {
+			gpios = <&ioexp2 10 GPIO_ACTIVE_LOW>;
+			label = "LED 3b Red";
+		};
+
+		
+		led_4ag {
+			gpios = <&ioexp3 9 GPIO_ACTIVE_LOW>;
+			label = "LED 4a Green";
+		};
+
+		led_4ar {
+			gpios = <&ioexp3 8 GPIO_ACTIVE_LOW>;
+			label = "LED 4a Red";
+		};
+
+		led_4bg {
+			gpios = <&ioexp3 11 GPIO_ACTIVE_LOW>;
+			label = "LED 4b Green";
+		};
+
+		led_4br {
+			gpios = <&ioexp3 10 GPIO_ACTIVE_LOW>;
+			label = "LED 4b Red";
+		};
+
+		
+		led_5ag {
+			gpios = <&ioexp4 9 GPIO_ACTIVE_LOW>;
+			label = "LED 5a Green";
+		};
+
+		led_5ar {
+			gpios = <&ioexp4 8 GPIO_ACTIVE_LOW>;
+			label = "LED 5a Red";
+		};
+
+		led_5bg {
+			gpios = <&ioexp4 11 GPIO_ACTIVE_LOW>;
+			label = "LED 5b Green";
+		};
+
+		led_5br {
+			gpios = <&ioexp4 10 GPIO_ACTIVE_LOW>;
+			label = "LED 5b Red";
+		};
+
+
+		led_og {
+			gpios = <&ioexp6 7 GPIO_ACTIVE_LOW>;
+			label = "LED Out Green";
+		};
+
+		led_or {
+			gpios = <&ioexp6 6 GPIO_ACTIVE_LOW>;
+			label = "LED Out Red";
+		};
+
+	};
+
+	buttons {
+		compatible = "gpio-keys";
+		
+		button_up {
+			gpios = <&ioexp5 8 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+			label = "UP";
+		};
+
+		button_left {
+			gpios = <&ioexp5 9 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+			label = "LEFT";
+		};
+
+		button_right {
+			gpios = <&ioexp5 10 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+			label = "RIGHT";
+		};
+
+		button_down {
+			gpios = <&ioexp5 11 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+			label = "DOWN";
+		};
+
+		button_enter {
+			gpios = <&ioexp5 12 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+			label = "ENTER";
+		};
+
+		button_esc {
+			gpios = <&ioexp5 13 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+			label = "ESC";
+		};
+
+	};
+};
+
+&cpu0 {
+	clock-frequency = <48000000>;
+};
+
+&tcc0 {
+	status = "okay";
+	compatible = "atmel,sam0-tcc-pwm";
+	/* Gives a maximum period of 1.4s */
+	prescaler = <4>;
+	#pwm-cells = <5>;
+};
+
+&sercom1 {
+	status = "okay";
+	compatible = "atmel,sam0-i2c";
+	clock-frequency = <I2C_BITRATE_FAST>;
+	#address-cells = <1>;
+	#size-cells = <0>;
+	
+	ioexp0: mcp23017@20 {
+		compatible = "microchip,mcp23017";
+		reg = <0x20>;
+		gpio-controller;
+		interrupt_gpios = <&ioexp5 0 GPIO_INT_EDGE_FALLING>
+	};
+
+	ioexp1: mcp23017@21 {
+		compatible = "microchip,mcp23017";
+		reg = <0x21>;
+		gpio-controller;
+		interrupt_gpios = <&ioexp5 1 GPIO_INT_EDGE_FALLING>
+	};
+
+	ioexp2: mcp23017@22 {
+		compatible = "microchip,mcp23017";
+		reg = <0x22>;
+		gpio-controller;
+		interrupt_gpios = <&ioexp5 2 GPIO_INT_EDGE_FALLING>
+	};
+
+	ioexp3: mcp23017@23 {
+		compatible = "microchip,mcp23017";
+		reg = <0x23>;
+		gpio-controller;
+		interrupt_gpios = <&ioexp5 3 GPIO_INT_EDGE_FALLING>
+	};
+
+	ioexp4: mcp23017@24 {
+		compatible = "microchip,mcp23017";
+		reg = <0x24>;
+		gpio-controller;
+		interrupt_gpios = <&ioexp5 4 GPIO_INT_EDGE_FALLING>
+	};
+
+	ioexp5: mcp23017@25 {
+		compatible = "microchip,mcp23017";
+		reg = <0x25>;
+		gpio-controller;
+		interrupt_gpios = <&porta 2 GPIO_INT_EDGE_FALLING>
+	};
+
+	ioexp6: pcf8574@26 {
+		compatible = "ti,pcf8574";
+		reg = <0x26>;
+		gpio-controller;
+		interrupt_gpios = <&ioexp5 5 GPIO_INT_EDGE_FALLING>
+	};
+
+	zdu0110: zdu0110rfx@5f {
+		compatible = "zilog,zdu0110rfx";
+		reg = <0x5f>;
+		interrupt_gpios = <&ioexp5 7 GPIO_INT_EDGE_FALLING>;
+
+		uart0: uart@0 {
+			compatible = "zilog,zdu0110rfx_port";
+			port_number = <0>;
+		};
+		
+		eeprom@0 {
+			compatible = "zilog,zdu0110rfx_eeprom";
+		};
+		
+		gpio@0 {
+			compatible = "zilog,zdu0110rfx_gpio";
+			interrupt_gpios = <&ioexp5 6 GPIO_INT_EDGE_FALLING>;
+		};
+	};
+	
+	adc0: mcp3428@69 {
+		compatible = "microchip,mcp3428";
+		reg = <0x69>;
+	};
+	
+	adc1: mcp3428@6a {
+		compatible = "microchip,mcp3428";
+		reg = <0x6a>;
+	};
+	
+	adc2: mcp3428@6b {
+		compatible = "microchip,mcp3428";
+		reg = <0x6b>;
+	};
+	
+	adc3: mcp3428@6c {
+		compatible = "microchip,mcp3428";
+		reg = <0x6c>;
+	};
+	
+	adc4: mcp3428@6d {
+		compatible = "microchip,mcp3428";
+		reg = <0x6d>;
+	};
+	
+	adc_out: mcp3425@68 {
+		compatible = "microchip,mcp3425";
+		reg = <0x68>;
+	};
+	
+	display: ssd1306@3d {
+		compatible = "solomon_ssd1306fb";
+		reg = <0x3d>;
+        label = "SSD1306";
+	    width = <128>;
+        height = <64>;
+        segment-offset = <2>;
+        page-offset = <0>;
+        display-offset = <0>;
+        multiplex-ratio = <63>;
+        segment-remap;
+        com-invdir;
+        prechargep = <0x22>;
+	};
+	
+};
+

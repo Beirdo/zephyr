@@ -1,0 +1,8 @@
+# SAM D21 Xplained Pro board configuration
+
+# Copyright (c) 2018 Bryan O'Donoghue
+# SPDX-License-Identifier: Apache-2.0
+
+config BOARD
+	default "battery_joule_thief_v1"
+	depends on BOARD_BEIRDO_BATTERY_JOULE_THIEF_V1

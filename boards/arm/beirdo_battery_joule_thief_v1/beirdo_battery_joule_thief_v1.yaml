@@ -1,0 +1,23 @@
+# Copyright (c) 2020 Gavin Hurlbut
+# SPDX-License-Identifier: Apache-2.0
+identifier: battery_joule_thief_v1
+name: Beirdo's Battery Joule Thief v1
+type: mcu
+arch: arm
+ram: 4
+flash: 16
+toolchain:
+  - zephyr
+  - gnuarmemb
+  - xtools
+supported:
+  - adc
+  - counter
+  - dma
+  - gpio
+  - i2c
+  - pwm
+  - spi
+  - usb_cdc
+  - usb_device
+  - watchdog
