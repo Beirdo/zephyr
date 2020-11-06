@@ -32,6 +32,7 @@ properties:
       - 3
       - 4
       - 6
+      - 8
 
   counter-size:
     type: int

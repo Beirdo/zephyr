@@ -77,6 +77,10 @@ extern "C" {
 #define ZDU_SUBCMD_UART_LOOPBACK            0x08
 #define ZDU_SUBCMD_UART_SOFT_RESET          0x0A
 
+
+uint8_t zdu0110xxx_get_slave_addr(const struct device *dev);
+
+
 /**
  * @brief Send command to the ZDU0110xxx, and get result.
  *

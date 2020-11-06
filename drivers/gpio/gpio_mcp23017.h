@@ -69,7 +69,7 @@ struct gpio_mcp23017_drv_config {
 };
 
 /** Runtime driver data */
-struct mcp23017_drv_data {
+struct gpio_mcp23017_drv_data {
 	/* gpio_driver_data needs to be first */
 	struct gpio_driver_config data;
 

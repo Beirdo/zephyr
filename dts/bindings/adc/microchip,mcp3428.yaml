@@ -1,0 +1,5 @@
+description: Microchip MCP3428
+
+compatible: "microchip,mcp3428"
+
+include: microchip,mcp342x-base.yaml

@@ -1,0 +1,14 @@
+# Copyright (c) 2020 Gavin Hurlbut
+# SPDX-License-Identifier: Apache-2.0
+
+description: Zilog ZDU0110RHX GPIO
+
+compatible: "zilog,zdu0110rhx_gpio"
+
+include: zilog,zdu0110xxx-gpio-base.yaml
+
+properties:
+    ngpios:
+      type: int
+      const: 7
+      description: Number of gpios supported

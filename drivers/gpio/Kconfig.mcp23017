@@ -13,14 +13,14 @@ menuconfig GPIO_MCP23017
 config GPIO_MCP23017_INIT_PRIORITY
 	int "Init priority"
 	default 70
-	depends on GPIO_PCA95XX
+	depends on GPIO_MCP23017
 	help
 	  Device driver initialization priority.
 
 config GPIO_MCP23017_INTERRUPT
 	bool "Interrupt enable"
 	default n
-	depends on GPIO_PCA95XX
+	depends on GPIO_MCP23017
 	help
 	  Enable interrupt support in MCP23017 driver.
 	  Note that the MCP23017 driver has the two interrupts

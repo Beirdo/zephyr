@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#define DT_DRV_COMPAT zliog_zdu0110xxx_eeprom
+#define DT_DRV_COMPAT zilog_zdu0110xxx_eeprom
 
 /**
  * @file
@@ -33,9 +33,10 @@ struct eeprom_zdu0110xxx_data {
 };
 
 static int eeprom_zdu0110xxx_read(const struct device *dev,
-				off_t offset, void *data, size_t len)
+				off_t offset, void *data_buf, size_t len)
 {
 	const struct eeprom_zdu0110xxx_drv_config *config = dev->config;
+	struct eeprom_zdu0110xxx_data *data = dev->data;
 	int ret;
 	uint8_t cmd[3];
 	size_t cmd_len = 0;
@@ -53,7 +54,7 @@ static int eeprom_zdu0110xxx_read(const struct device *dev,
 	cmd[cmd_len++] = (uint8_t)offset;
 	cmd[cmd_len++] = ZDU_CMD_EEPROM_READ;
 	
-	ret = zdu0110xxx_send_command(data->parent, cmd, cmd_len, data, len);
+	ret = zdu0110xxx_send_command(data->parent, cmd, cmd_len, data_buf, len);
 
 	if (ret != 0) {
 		LOG_ERR("failed to read EEPROM (offset=%08x len=%d err=%d)",
@@ -65,13 +66,16 @@ static int eeprom_zdu0110xxx_read(const struct device *dev,
 }
 
 static int eeprom_zdu0110xxx_write(const struct device *dev,
-				 off_t offset, const void *data, size_t len)
+				 off_t offset, const void *data_buf, size_t len)
 {
 	const struct eeprom_zdu0110xxx_drv_config *config = dev->config;
+	struct eeprom_zdu0110xxx_data *data = dev->data;
+
 	int ret;
 	uint8_t cmd[64];
 	size_t cmd_len = 0;
-	size_t index = 0;
+	int index = 0;
+	int copy_len;
 
 	if (!len) {
 		return 0;
@@ -90,12 +94,18 @@ static int eeprom_zdu0110xxx_write(const struct device *dev,
 			cmd_len = 0;
 		}
 	
-		cmd[cmd_len++] = ZDU_CMD_EEPROM_WRITE;
-
-		while ((cmd_len < 64) && (index < len)) {
-			cmd[cmd_len++] = data[index++];
+		copy_len = len - index;
+		copy_len = copy_len > 64 - cmd_len ? 64 - cmd_len : copy_len;
+		if (copy_len <= 0) {
+			break;
 		}
 		
+		cmd[cmd_len++] = ZDU_CMD_EEPROM_WRITE;
+
+		memcpy(&cmd[cmd_len], &((const uint8_t *)data_buf)[index], copy_len);
+		cmd_len += copy_len;
+		index += copy_len;
+
 		ret = zdu0110xxx_send_command(data->parent, cmd, cmd_len, NULL, 0);
 		if (ret != 0) {
 			LOG_ERR("failed to write EEPROM (offset=%08x len=%d err=%d)",

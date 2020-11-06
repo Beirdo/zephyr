@@ -1,0 +1,8 @@
+# Copyright (c) 2020 Gavin Hurlbut
+# SPDX-License-Identifier: Apache-2.0
+
+description: Zilog ZDU0110RFX Base Device
+
+compatible: "zilog,zdu0110rfx"
+
+include: zilog,zdu0110xxx-uart-base.yaml

@@ -38,7 +38,7 @@ struct gpio_pcf8574_drv_config {
 	/** The slave address of the chip */
 	uint16_t i2c_slave_addr;
 
-#ifdef CONFIG_GPIO_PCA95XX_INTERRUPT
+#ifdef CONFIG_GPIO_PCF8574_INTERRUPT
 	/* Interrupt pin definition */
 	const char *int_gpio_port;
 
@@ -92,9 +92,8 @@ struct gpio_pcf8574_drv_data {
 
 static int update_gpio(const struct device *dev, uint8_t *read_value)
 {
-	struct gpio_pcf8574_drv_data * const data =
-		(struct gpio_pcf8574_drv_data * const)dev->data;
-	struct gpio_pcf8574_drv_config * const config = dev->config;
+	struct gpio_pcf8574_drv_data * data = dev->data;
+	const struct gpio_pcf8574_drv_config * const config = dev->config;
 	uint8_t reg_dir = data->reg_cache.dir;
 	uint8_t reg_out = data->reg_cache.output;
 	uint8_t output_value;
@@ -184,11 +183,10 @@ static int gpio_pcf8574_config(const struct device *dev,
 			       gpio_pin_t pin, gpio_flags_t flags)
 {
 	int ret;
-	struct gpio_pcf8574_drv_data * const data =
-		(struct gpio_pc8574_drv_data * const)dev->data;
+	struct gpio_pcf8574_drv_data * data = dev->data;
 
 #if (CONFIG_GPIO_LOG_LEVEL >= LOG_LEVEL_DEBUG)
-	const struct gpio_pcf8574_config * const config = dev->config;
+	const struct gpio_pcf8574_drv_config * const config = dev->config;
 	uint16_t i2c_addr = config->i2c_slave_addr;
 #endif
 
@@ -224,8 +222,7 @@ done:
 static int gpio_pcf8574_port_get_raw(const struct device *dev,
 				     uint32_t *value)
 {
-	struct gpio_pcf8574_drv_data * const data =
-		(struct gpio_pca95xx_drv_data * const)dev->data;
+	struct gpio_pcf8574_drv_data * data = dev->data;
 	uint8_t buf;
 	int ret;
 
@@ -264,7 +261,7 @@ static int gpio_pcf8574_port_set_masked_raw(const struct device *dev,
 	k_sem_take(&data->lock, K_FOREVER);
 
 	reg_out = data->reg_cache.output;
-	reg_out = (out & ~mask) | (mask & value);
+	reg_out = (reg_out & ~mask) | (mask & value);
 
 	data->reg_cache.output = reg_out;
 	ret = update_gpio(dev, NULL);
@@ -317,9 +314,9 @@ static void gpio_pcf8574_interrupt_worker(struct k_work *work)
 {
 	struct gpio_pcf8574_drv_data * const data = CONTAINER_OF(
 		work, struct gpio_pcf8574_drv_data, interrupt_worker);
-	uint16_t input_new, input_cache, changed_pins, trig_edge;
-	uint16_t trig_level = 0;
-	uint32_t triggered_int = 0;
+	uint8_t input_new, input_cache, changed_pins, trig_edge;
+	uint8_t trig_level = 0;
+	uint8_t triggered_int = 0;
 	int ret;
 
 	k_sem_take(&data->lock, K_FOREVER);
@@ -386,11 +383,10 @@ static int gpio_pcf8574_pin_interrupt_configure(const struct device *dev,
 	}
 
 #ifdef CONFIG_GPIO_PCF8574_INTERRUPT
-	const struct gpio_pcf8574_config * const config = dev->config;
-	struct gpio_pcf8574_drv_data * const data =
-		(struct gpio_pcf8574_drv_data * const)dev->data;
+	const struct gpio_pcf8574_drv_config * const config = dev->config;
+	struct gpio_pcf8574_drv_data * data = dev->data;
 	const struct device *int_gpio_dev;
-	uint16_t reg;
+	uint8_t reg;
 	bool enabled, edge, level, active;
 
 	/* Check for an invalid pin number */
@@ -447,7 +443,7 @@ static int gpio_pcf8574_pin_interrupt_configure(const struct device *dev,
 				config->int_gpio_pin, ret);
 			goto err;
 		}
-		drv->interrupt_active = active;
+		data->interrupt_active = active;
 
 		if (active) {
 			/* Read current status to reset any
@@ -468,7 +464,6 @@ static int gpio_pcf8574_manage_callback(const struct device *dev,
 					struct gpio_callback *callback,
 					bool set)
 {
-	const struct gpio_pcf8574_config * const config = dev->config;
 	struct gpio_pcf8574_drv_data * const data =
 		(struct gpio_pcf8574_drv_data * const)dev->data;
 
@@ -502,7 +497,7 @@ static const struct gpio_driver_api gpio_pcf8574_drv_api_funcs = {
  */
 static int gpio_pcf8574_init(const struct device *dev)
 {
-	const struct gpio_pcf8574_config * const config = dev->config;
+	const struct gpio_pcf8574_drv_config * const config = dev->config;
 	struct gpio_pcf8574_drv_data * const data =
 		(struct gpio_pcf8574_drv_data * const)dev->data;
 	const struct device *i2c_master;

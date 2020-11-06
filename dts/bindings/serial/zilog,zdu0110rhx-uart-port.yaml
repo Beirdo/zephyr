@@ -1,0 +1,8 @@
+# Copyright (c) 2020 Gavin Hurlbut
+# SPDX-License-Identifier: Apache-2.0
+
+description: Zilog ZDU0110RHX UART Port
+
+compatible: "zilog,zdu0110rhx_port"
+
+include: zilog,zdu0110xxx-port-base.yaml

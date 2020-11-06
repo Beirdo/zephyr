@@ -38,7 +38,7 @@ struct gpio_zdu0110xxx_drv_config {
 #endif
 };
 
-struct gpio_zdu0110xxx_data {
+struct gpio_zdu0110xxx_drv_data {
 	/* gpio_driver_data needs to be first */
 	struct gpio_driver_data common;
 	const struct device *parent;
@@ -90,9 +90,8 @@ static size_t config_command_append(uint8_t *cmd, size_t cmd_len, uint16_t value
 static int gpio_zdu0110xxx_config(const struct device *dev,
 				gpio_pin_t pin, gpio_flags_t flags)
 {
-	struct gpio_zdu0110xxx_drv_config *config = dev->config;
-	struct gpio_zdu0110xxx_data *data = dev->data;
-	int err = 0;
+	const struct gpio_zdu0110xxx_drv_config *config = dev->config;
+	struct gpio_zdu0110xxx_drv_data *data = dev->data;
 	uint16_t pin_mask;
 	uint8_t cmd[32];
 	size_t cmd_len = 0;
@@ -186,11 +185,10 @@ static int gpio_zdu0110xxx_config(const struct device *dev,
 static int gpio_zdu0110xxx_port_get_raw(const struct device *dev,
 				      gpio_port_value_t *value)
 {
-	struct gpio_zdu0110xxx_drv_config *config = dev->config;
-	struct gpio_zdu0110xxx_data *data = dev->data;
+	struct gpio_zdu0110xxx_drv_data *data = dev->data;
 	uint8_t cmd[1] = {ZDU_CMD_GPIO_GET_INPUT};
 	uint8_t buf[2];
-	size_t buf_len = dev->is_qux ? 2 : 1;
+	size_t buf_len = data->is_qux ? 2 : 1;
 	int index;
 	uint16_t outval = 0;
 	int ret;
@@ -215,15 +213,14 @@ static int gpio_zdu0110xxx_port_get_raw(const struct device *dev,
 
 	k_sem_give(&data->lock);
 	
-	return value;
+	return ret;
 }
 
 static int gpio_zdu0110xxx_port_set_masked_raw(const struct device *dev,
 					     gpio_port_pins_t mask,
 					     gpio_port_value_t value)
 {
-	struct gpio_zdu0110xxx_drv_config *config = dev->config;
-	struct gpio_zdu0110xxx_data *data = dev->data;
+	struct gpio_zdu0110xxx_drv_data *data = dev->data;
 	bool is_qux = data->is_qux;
 	uint8_t cmd[5];
 	size_t cmd_len = 0;
@@ -246,7 +243,7 @@ static int gpio_zdu0110xxx_port_set_masked_raw(const struct device *dev,
 	data->reg_cache.output &= ~mask;
 	data->reg_cache.output |= masked_value;
 
-	ret = zdu0110xxx_send(data->parent, cmd, cmd_len, NULL, 0);
+	ret = zdu0110xxx_send_command(data->parent, cmd, cmd_len, NULL, 0);
 
 	k_sem_give(&data->lock);
 	
@@ -256,8 +253,7 @@ static int gpio_zdu0110xxx_port_set_masked_raw(const struct device *dev,
 static int gpio_zdu0110xxx_port_set_bits_raw(const struct device *dev,
 					   gpio_port_pins_t pins)
 {
-	struct gpio_zdu0110xxx_drv_config *config = dev->config;
-	struct gpio_zdu0110xxx_data *data = dev->data;
+	struct gpio_zdu0110xxx_drv_data *data = dev->data;
 	bool is_qux = data->is_qux;
 	uint8_t cmd[5];
 	size_t cmd_len = 0;
@@ -276,7 +272,7 @@ static int gpio_zdu0110xxx_port_set_bits_raw(const struct device *dev,
 
 	k_sem_take(&data->lock, K_FOREVER);
 
-	ret = zdu0110xxx_send(data->parent, cmd, cmd_len, NULL, 0);
+	ret = zdu0110xxx_send_command(data->parent, cmd, cmd_len, NULL, 0);
 	
 	k_sem_give(&data->lock);
 	
@@ -286,8 +282,7 @@ static int gpio_zdu0110xxx_port_set_bits_raw(const struct device *dev,
 static int gpio_zdu0110xxx_port_clear_bits_raw(const struct device *dev,
 					     gpio_port_pins_t pins)
 {
-	struct gpio_zdu0110xxx_drv_config *config = dev->config;
-	struct gpio_zdu0110xxx_data *data = dev->data;
+	struct gpio_zdu0110xxx_drv_data *data = dev->data;
 	bool is_qux = data->is_qux;
 	uint8_t cmd[5];
 	size_t cmd_len = 0;
@@ -306,7 +301,7 @@ static int gpio_zdu0110xxx_port_clear_bits_raw(const struct device *dev,
 
 	data->reg_cache.output &= ~pins;
 
-	ret = zdu0110xxx_send(data->parent, cmd, cmd_len, NULL, 0);
+	ret = zdu0110xxx_send_command(data->parent, cmd, cmd_len, NULL, 0);
 
 	k_sem_give(&data->lock);
 	
@@ -316,13 +311,11 @@ static int gpio_zdu0110xxx_port_clear_bits_raw(const struct device *dev,
 static int gpio_zdu0110xxx_port_toggle_bits(const struct device *dev,
 					  gpio_port_pins_t pins)
 {
-	struct gpio_zdu0110xxx_drv_config *config = dev->config;
-	struct gpio_zdu0110xxx_data *data = dev->data;
+	struct gpio_zdu0110xxx_drv_data *data = dev->data;
 	bool is_qux = data->is_qux;
 	uint8_t cmd[5];
 	size_t cmd_len = 0;
-	uint16_t value = dev->reg_cache.output;
-	int ret;
+	uint16_t value = data->reg_cache.output;
 
 	cmd[cmd_len++] = ZDU_CMD_GPIO_SET_OUTPUT;
 	cmd_len = config_command_append(cmd, cmd_len, pins, is_qux);
@@ -331,16 +324,16 @@ static int gpio_zdu0110xxx_port_toggle_bits(const struct device *dev,
 	data->reg_cache.output &= ~pins;
 	data->reg_cache.output |= ~value;
 
-	return zdu0110xxx_send(data->parent, cmd, cmd_len, NULL, 0);
+	return zdu0110xxx_send_command(data->parent, cmd, cmd_len, NULL, 0);
 }
 
 
 
-#ifdef CONFIG_GPIO_MCP23017_INTERRUPT
+#ifdef CONFIG_GPIO_ZDU0110XXX_INTERRUPT
 static void gpio_zdu0110xxx_interrupt_worker(struct k_work *work)
 {
-	struct gpio_zdu0110xxx_data * const data = CONTAINER_OF(
-		work, struct gpio_zdu0110xxx_data, interrupt_worker);
+	struct gpio_zdu0110xxx_drv_data * const data = CONTAINER_OF(
+		work, struct gpio_zdu0110xxx_drv_data, interrupt_worker);
 	uint16_t input_new, input_cache, changed_pins, trig_edge;
 	uint16_t trig_level = 0;
 	uint16_t triggered_int = 0;
@@ -424,15 +417,15 @@ static void gpio_zdu0110xxx_interrupt_callback(const struct device *dev,
 					    struct gpio_callback *cb,
 					    gpio_port_pins_t pins)
 {
-	struct gpio_zdu0110xxx_data * const data =
-		CONTAINER_OF(cb, struct gpio_zdu0110xxx_data, gpio_callback);
+	struct gpio_zdu0110xxx_drv_data * const data =
+		CONTAINER_OF(cb, struct gpio_zdu0110xxx_drv_data, gpio_callback);
 
 	ARG_UNUSED(pins);
 
 	/* Cannot read ZDU0110xxx registers from ISR context, queue worker */
 	k_work_submit(&data->interrupt_worker);
 }
-#endif /* CONFIG_GPIO_MCP23017_INTERRUPT */
+#endif /* CONFIG_GPIO_ZDU0110XXX_INTERRUPT */
 
 
 
@@ -455,10 +448,9 @@ static int gpio_zdu0110xxx_pin_interrupt_configure(const struct device *dev,
 
 #ifdef CONFIG_GPIO_ZDU0110XXX_INTERRUPT
 	const struct gpio_zdu0110xxx_drv_config * const config = dev->config;
-	struct gpio_zdu0110xxx_data * const data =
-		(struct gpio_zdu0110xxx_data * const)dev->data;
+	struct gpio_zdu0110xxx_drv_data * data = dev->data;
 	const struct device *int_gpio_dev;
-	uint8_t reg;
+	uint8_t i2c_slave_addr = zdu0110xxx_get_slave_addr(data->parent);
 	bool enabled, edge, level, active;
 	uint8_t cmd[16];
 	size_t cmd_len;
@@ -472,8 +464,8 @@ static int gpio_zdu0110xxx_pin_interrupt_configure(const struct device *dev,
 	/* Check configured pin direction */
 	if ((mode != GPIO_INT_MODE_DISABLED) &&
 	    (BIT(pin) & data->reg_cache.iodir) != 0) {
-		LOG_ERR("ZSU0110xxx[0x%X]: output pin cannot trigger interrupt",
-			config->i2c_slave_addr);
+		LOG_ERR("ZDU0110xxx-GPIO[0x%X]: output pin cannot trigger interrupt",
+			i2c_slave_addr);
 		return -ENOTSUP;
 	}
 
@@ -510,12 +502,12 @@ static int gpio_zdu0110xxx_pin_interrupt_configure(const struct device *dev,
 			 */
 			cmd_len = 0;
 			cmd[cmd_len++] = ZDU_CMD_GPIO_GET_INT_STATUS;
-			ret = zdu0110xxx_send_command(dev->parent, cmd, cmd_len, rsp, 1);
+			ret = zdu0110xxx_send_command(data->parent, cmd, cmd_len, rsp, 1);
 		}
 
 		if (ret != 0) {
-			LOG_ERR("ZDU0110xxx[0x%X]: failed to clear potential interrupts "
-			    "(%d), disabling", config->i2c_slave_addr, ret);
+			LOG_ERR("ZDU0110xxx-GPIO[0x%X]: failed to clear potential interrupts "
+			    "(%d), disabling", i2c_slave_addr, ret);
 			active = 0;
 		}
 
@@ -525,9 +517,8 @@ static int gpio_zdu0110xxx_pin_interrupt_configure(const struct device *dev,
 			ret = gpio_pin_interrupt_configure(int_gpio_dev,
 				config->int_gpio_pin, GPIO_INT_MODE_DISABLED);
 			if (ret != 0) {
-				LOG_ERR("ZDU0110xxx[0x%X]: failed to disable interrupt "
-					"on pin %d (%d)", config->i2c_slave_addr,
-					config->int_gpio_pin, ret);
+				LOG_ERR("ZDU0110xxx-GPIO[0x%X]: failed to disable interrupt "
+					"on pin %d (%d)", i2c_slave_addr, config->int_gpio_pin, ret);
 				active = 0;
 			}
 		}
@@ -540,8 +531,8 @@ static int gpio_zdu0110xxx_pin_interrupt_configure(const struct device *dev,
 		
 		ret = zdu0110xxx_send_command(data->parent, cmd, cmd_len, NULL, 0);
 		if (ret != 0) {
-			LOG_ERR("ZDU0110xxx[0x%X]: failed to configure interrupts "
-			    "to %02X (%d), disabling", config->i2c_slave_addr,
+			LOG_ERR("ZDU0110xxx-GPIO[0x%X]: failed to configure interrupts "
+			    "to %02X (%d), disabling", i2c_slave_addr,
 				active, ret);
 			active = 0;
 		}
@@ -552,8 +543,8 @@ static int gpio_zdu0110xxx_pin_interrupt_configure(const struct device *dev,
 				config->int_gpio_pin, GPIO_INT_EDGE_TO_ACTIVE);
 				
 			if (ret != 0) {
-				LOG_ERR("ZDU0110xxx[0x%X]: failed to configure interrupt "
-					"on pin %d (%d)", config->i2c_slave_addr,
+				LOG_ERR("ZDU0110xxx-GPIO[0x%X]: failed to configure interrupt "
+					"on pin %d (%d)", i2c_slave_addr,
 					config->int_gpio_pin, ret);
 				active = 0;
 			}
@@ -574,9 +565,8 @@ static int gpio_zdu0110xxx_manage_callback(const struct device *dev,
 					struct gpio_callback *callback,
 					bool set)
 {
-	const struct gpio_zdu0110xxx_drv_config * const config = dev->config;
-	struct gpio_zdu0110xxx_data * const data =
-		(struct gpio_zdu0110xxx_data * const)dev->data;
+	struct gpio_zdu0110xxx_drv_data * const data =
+		(struct gpio_zdu0110xxx_drv_data * const)dev->data;
 
 	k_sem_take(&data->lock, K_FOREVER);
 
@@ -591,7 +581,8 @@ static int gpio_zdu0110xxx_manage_callback(const struct device *dev,
 static int gpio_zdu0110xxx_init(const struct device *dev)
 {
 	const struct gpio_zdu0110xxx_drv_config *config = dev->config;
-	struct gpio_zdu0110xxx_data *data = dev->data;
+	struct gpio_zdu0110xxx_drv_data *data = dev->data;
+	
 #ifdef CONFIG_GPIO_MCP23017_INTERRUPT
 	const struct device *int_gpio_dev;
 	int ret;
@@ -599,12 +590,14 @@ static int gpio_zdu0110xxx_init(const struct device *dev)
 
 	data->parent = device_get_binding(config->parent_dev_name);
 	if (!data->parent) {
-		LOG_ERR("parent ZDU0110xxx device '%s' not found",
+		LOG_ERR("ZDU0110xxx-GPIO: parent ZDU0110xxx device '%s' not found",
 			config->parent_dev_name);
 		return -EINVAL;
 	}
 
-	data->is_qux = (strcmp(config->dev_type, "qux") == 0)
+	uint8_t i2c_slave_addr = zdu0110xxx_get_slave_addr(data->parent);
+
+	data->is_qux = (strcmp(config->dev_type, "qux") == 0);
 
 	k_sem_init(&data->lock, 1, 1);
 
@@ -619,8 +612,8 @@ static int gpio_zdu0110xxx_init(const struct device *dev)
 	/* Configure GPIO interrupt pin */
 	int_gpio_dev = device_get_binding(config->int_gpio_port);
 	if (int_gpio_dev == NULL) {
-		LOG_ERR("ZDU0110xxx[0x%X]: error getting GPIO interrupt GPIO"
-			" device (%s)", config->i2c_slave_addr,
+		LOG_ERR("ZDU0110xxx-GPIO[0x%X]: error getting GPIO interrupt GPIO"
+			" device (%s)", i2c_slave_addr,
 			config->int_gpio_port);
 		return -ENODEV;
 	}
@@ -628,8 +621,8 @@ static int gpio_zdu0110xxx_init(const struct device *dev)
 	ret = gpio_pin_configure(int_gpio_dev, config->int_gpio_pin,
 				(config->int_gpio_flags | GPIO_INPUT));
 	if (ret != 0) {
-		LOG_ERR("ZDU0110xxx[0x%X]: failed to configure GPIO interrupt"
-			" pin %d (%d)", config->i2c_slave_addr,
+		LOG_ERR("ZDU0110xxx-GPIO[0x%X]: failed to configure GPIO interrupt"
+			" pin %d (%d)", i2c_slave_addr,
 			config->int_gpio_pin, ret);
 		return ret;
 	}
@@ -653,6 +646,9 @@ static const struct gpio_driver_api gpio_zdu0110xxx_api = {
 	.port_toggle_bits = gpio_zdu0110xxx_port_toggle_bits,
 	.pin_interrupt_configure = gpio_zdu0110xxx_pin_interrupt_configure,
 	.port_get_raw = gpio_zdu0110xxx_port_get_raw,
+#ifdef CONFIG_GPIO_ZDU0110XXX_INTERRUPT
+	.manage_callback = gpio_zdu0110xxx_manage_callback,
+#endif
 };
 
 BUILD_ASSERT(CONFIG_GPIO_ZDU0110XXX_INIT_PRIORITY >
@@ -661,27 +657,29 @@ BUILD_ASSERT(CONFIG_GPIO_ZDU0110XXX_INIT_PRIORITY >
 	     "driver");
 	     
 #define DT_INST_ZDU0110XXX(inst, t) DT_INST(inst, zilog_zdu0110##t##_gpio)
-#define GET_INT_GPIO(inst, t)	(DT_INST_ZDU0110XXX(inst, t), interrupt_gpios)
+#define GET_INT_GPIO(inst, t)	DT_INST_ZDU0110XXX(inst, t), interrupt_gpios
 
 #define GPIO_ZDU0110XXX_DEVICE(t, id, iocount)								\
 	static const struct gpio_zdu0110xxx_drv_config							\
 			gpio_zdu0110##t##_##id##_cfg = {								\
 		.common = {                                             			\
 			.port_pin_mask =                                				\
-				 GPIO_PORT_PIN_MASK_FROM_DT_INST(DT_INST_ZDU0110XXX(id, t))	\
+				 GPIO_PORT_PIN_MASK_FROM_DT_NODE(DT_INST_ZDU0110XXX(id, t))	\
 		},                                                      			\
-		.parent_dev_name = DT_INST_BUS_LABEL(DT_INST_ZDU0110XXX(id, t)),	\
+		.parent_dev_name = DT_BUS_LABEL(DT_INST_ZDU0110XXX(id, t)),			\
 		.io_count = iocount,												\
 		.dev_type = "##t##",												\
 	IF_ENABLED(CONFIG_GPIO_ZDU0110XXX_INTERRUPT, (							\
-	IF_ENABLED(DT_INST_NODE_HAS_PROP(GET_INT_GPIO(id, t)), (				\
-		.int_gpio_port = DT_INST_GPIO_LABEL(GET_INT_GPIO(id, t)),			\
-		.int_gpio_pin = DT_INST_GPIO_PIN(GET_INT_GPIO(id, t)),				\
-		.int_gpio_flags = DT_INST_GPIO_FLAGS(GET_INT_GPIO(id, t)),			\
+	IF_ENABLED(DT_INST_NODE_HAS_PROP(DT_INST_ZDU0110XXX(id, t), interrupt_gpios),	\
+	(	 																	\
+		.int_gpio_port = DT_GPIO_LABEL(DT_INST_ZDU0110XXX(id, t), interrupt_gpios),			\
+		.int_gpio_pin = DT_GPIO_PIN(DT_INST_ZDU0110XXX(id, t), interrupt_gpios),				\
+		.int_gpio_flags = DT_GPIO_FLAGS(DT_INST_ZDU0110XXX(id, t), interrupt_gpios),			\
 	))))																	\
 	};																		\
 																			\
-	static struct gpio_zdu0110xxx_data gpio_zdu0110##t##_##id##_data = {	\
+	static struct gpio_zdu0110xxx_drv_data									\
+			gpio_zdu0110##t##_##id##_data = {								\
 		.reg_cache = {														\
 			.output = 0x0000,												\
 			.input = 0xFFFF,												\
@@ -693,7 +691,7 @@ BUILD_ASSERT(CONFIG_GPIO_ZDU0110XXX_INIT_PRIORITY >
 	};																		\
 																			\
 	DEVICE_AND_API_INIT(gpio_zdu0110##t##_##id,								\
-			    DT_INST_LABEL(DT_INST_ZDU0110XXX(id, t)),					\
+			    DT_LABEL(DT_INST_ZDU0110XXX(id, t)),						\
 			    &gpio_zdu0110xxx_init,										\
 			    &gpio_zdu0110##t##_##id##_data,								\
 			    &gpio_zdu0110##t##_##id##_cfg,								\
@@ -702,43 +700,34 @@ BUILD_ASSERT(CONFIG_GPIO_ZDU0110XXX_INIT_PRIORITY >
 			    &gpio_zdu0110xxx_api);
 
 
+#define CALL_WITH_ARG(arg, expr) expr(arg);
+
+#define INST_DT_ZDU0110XXX_FOREACH(t, inst_expr)				\
+	UTIL_LISTIFY(DT_NUM_INST_STATUS_OKAY(zilog_zdu0110##t##_gpio),	\
+		     CALL_WITH_ARG, inst_expr)
+
+
 /*
  * ZDU0110RFX - GPIO0 - GPIO2
  */
-#define GPIO_ZDU0110RFX_DEVICE_INSTANCE(id)	GPIO_ZDU0110XXX_DEVICE(rfx, id, 3)
-
-#define DT_DRV_COMPAT zilog_zdu0110rfx_gpio
-DT_INST_FOREACH_STATUS_OKAY(GPIO_ZDU0110RFX_DEVICE_INSTANCE)
-#undef DT_DRV_COMPAT
-
+#define GPIO_ZDU0110RFX_DEVICE(id)	GPIO_ZDU0110XXX_DEVICE(rfx, id, 3)
 
 /*
  * ZDU0110RHX - GPIO0 - GPIO6
  */
-#define GPIO_ZDU0110RHX_DEVICE_INSTANCE(id)	GPIO_ZDU0110XXX_DEVICE(rhx, id, 7)
-
-#define DT_DRV_COMPAT zilog_zdu0110rhx_gpio
-DT_INST_FOREACH_STATUS_OKAY(GPIO_ZDU0110RHX_DEVICE_INSTANCE)
-#undef DT_DRV_COMPAT
-
-
+#define GPIO_ZDU0110RHX_DEVICE(id)	GPIO_ZDU0110XXX_DEVICE(rhx, id, 7)
 
 /*
  * ZDU0110RJX - GPIO0 - GPIO7
  */
-#define GPIO_ZDU0110RJX_DEVICE_INSTANCE(id)	GPIO_ZDU0110XXX_DEVICE(rjx, id, 8)
-
-#define DT_DRV_COMPAT zilog_zdu0110rjx_gpio
-DT_INST_FOREACH_STATUS_OKAY(GPIO_ZDU0110RJX_DEVICE_INSTANCE)
-#undef DT_DRV_COMPAT
-
-
+#define GPIO_ZDU0110RJX_DEVICE(id)	GPIO_ZDU0110XXX_DEVICE(rjx, id, 8)
 
 /*
  * ZDU0110QUX - GPIO0 - GPIO11
  */
-#define GPIO_ZDU0110QUX_DEVICE_INSTANCE(id)	GPIO_ZDU0110XXX_DEVICE(qux, id, 12)
+#define GPIO_ZDU0110QUX_DEVICE(id)	GPIO_ZDU0110XXX_DEVICE(qux, id, 12)
 
-#define DT_DRV_COMPAT zilog_zdu0110qux_gpio
-DT_INST_FOREACH_STATUS_OKAY(GPIO_ZDU0110QUX_DEVICE_INSTANCE)
-#undef DT_DRV_COMPAT
+INST_DT_ZDU0110XXX_FOREACH(rfx, GPIO_ZDU0110RFX_DEVICE);
+INST_DT_ZDU0110XXX_FOREACH(rhx, GPIO_ZDU0110RHX_DEVICE);
+INST_DT_ZDU0110XXX_FOREACH(rjx, GPIO_ZDU0110RJX_DEVICE);
+INST_DT_ZDU0110XXX_FOREACH(qux, GPIO_ZDU0110QUX_DEVICE);

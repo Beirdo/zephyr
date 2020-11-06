@@ -19,12 +19,13 @@
 
 	aliases {
 		i2c-0 = &sercom1;
+		led0 = &led1ag;
 	};
 
 	leds {
 		compatible = "gpio-leds";
 		
-		led_1ag {
+		led1ag: led_1ag {
 			gpios = <&ioexp0 9 GPIO_ACTIVE_LOW>;
 			label = "LED 1a Green";
 		};
@@ -186,7 +187,7 @@
 	compatible = "atmel,sam0-tcc-pwm";
 	/* Gives a maximum period of 1.4s */
 	prescaler = <4>;
-	#pwm-cells = <5>;
+	#pwm-cells = <1>;
 };
 
 &sercom1 {
@@ -197,106 +198,170 @@
 	#size-cells = <0>;
 	
 	ioexp0: mcp23017@20 {
+		status = "okay";
 		compatible = "microchip,mcp23017";
+		label = "U1";
 		reg = <0x20>;
 		gpio-controller;
-		interrupt_gpios = <&ioexp5 0 GPIO_INT_EDGE_FALLING>
+		#gpio-cells = <2>;
+		interrupt-gpios = <&ioexp5 0 GPIO_ACTIVE_LOW>;
+		ngpios = <16>;
 	};
 
 	ioexp1: mcp23017@21 {
+		status = "okay";
 		compatible = "microchip,mcp23017";
+		label = "U7";
 		reg = <0x21>;
 		gpio-controller;
-		interrupt_gpios = <&ioexp5 1 GPIO_INT_EDGE_FALLING>
+		#gpio-cells = <2>;
+		interrupt-gpios = <&ioexp5 1 GPIO_ACTIVE_LOW>;
+		ngpios = <16>;
 	};
 
 	ioexp2: mcp23017@22 {
+		status = "okay";
 		compatible = "microchip,mcp23017";
+		label = "U14";
 		reg = <0x22>;
 		gpio-controller;
-		interrupt_gpios = <&ioexp5 2 GPIO_INT_EDGE_FALLING>
+		#gpio-cells = <2>;
+		interrupt-gpios = <&ioexp5 2 GPIO_ACTIVE_LOW>;
+		ngpios = <16>;
 	};
 
 	ioexp3: mcp23017@23 {
+		status = "okay";
 		compatible = "microchip,mcp23017";
+		label = "U21";
 		reg = <0x23>;
 		gpio-controller;
-		interrupt_gpios = <&ioexp5 3 GPIO_INT_EDGE_FALLING>
+		#gpio-cells = <2>;
+		interrupt-gpios = <&ioexp5 3 GPIO_ACTIVE_LOW>;
+		ngpios = <16>;
 	};
 
 	ioexp4: mcp23017@24 {
+		status = "okay";
 		compatible = "microchip,mcp23017";
+		label = "U29";
 		reg = <0x24>;
 		gpio-controller;
-		interrupt_gpios = <&ioexp5 4 GPIO_INT_EDGE_FALLING>
+		#gpio-cells = <2>;
+		interrupt-gpios = <&ioexp5 4 GPIO_ACTIVE_LOW>;
+		ngpios = <16>;
 	};
 
 	ioexp5: mcp23017@25 {
+		status = "okay";
 		compatible = "microchip,mcp23017";
+		label = "U37";
 		reg = <0x25>;
 		gpio-controller;
-		interrupt_gpios = <&porta 2 GPIO_INT_EDGE_FALLING>
+		#gpio-cells = <2>;
+		interrupt-gpios = <&porta 2 GPIO_ACTIVE_LOW>;
+		ngpios = <16>;
 	};
 
 	ioexp6: pcf8574@26 {
+		status = "okay";
 		compatible = "ti,pcf8574";
+		label = "U43";
 		reg = <0x26>;
 		gpio-controller;
-		interrupt_gpios = <&ioexp5 5 GPIO_INT_EDGE_FALLING>
+		#gpio-cells = <2>;
+		interrupt-gpios = <&ioexp5 5 GPIO_ACTIVE_LOW>;
+		ngpios = <8>;
 	};
 
 	zdu0110: zdu0110rfx@5f {
+		status = "okay";
 		compatible = "zilog,zdu0110rfx";
+		label = "U38";
 		reg = <0x5f>;
-		interrupt_gpios = <&ioexp5 7 GPIO_INT_EDGE_FALLING>;
+		interrupt-gpios = <&ioexp5 7 GPIO_ACTIVE_LOW>;
+		#address-cells = <1>;
+		#size-cells = <0>;
 
 		uart0: uart@0 {
+			status = "okay";
 			compatible = "zilog,zdu0110rfx_port";
-			port_number = <0>;
+			label = "U38_UART0";
+			port-number = <0>;
+			current-speed = < 57600 >;
+			reg = <0>;
 		};
 		
-		eeprom@0 {
-			compatible = "zilog,zdu0110rfx_eeprom";
+		eeprom@8 {
+			status = "okay";
+			compatible = "zilog,zdu0110xxx_eeprom";
+			label = "U38_EEPROM";
+			reg = <8>;
 		};
 		
-		gpio@0 {
+		gpio@9 {
+			status = "okay";
 			compatible = "zilog,zdu0110rfx_gpio";
-			interrupt_gpios = <&ioexp5 6 GPIO_INT_EDGE_FALLING>;
+			label = "U38_GPIO";
+			interrupt-gpios = <&ioexp5 6 GPIO_ACTIVE_LOW>;
+			gpio-controller;
+			#gpio-cells = <2>;
+			ngpios = <3>;
+			reg = <9>;
 		};
 	};
 	
 	adc0: mcp3428@69 {
+		status = "okay";
+		label = "U6";
 		compatible = "microchip,mcp3428";
+		#io-channel-cells = <1>;
 		reg = <0x69>;
 	};
 	
 	adc1: mcp3428@6a {
+		status = "okay";
+		label = "U13";
 		compatible = "microchip,mcp3428";
+		#io-channel-cells = <1>;
 		reg = <0x6a>;
 	};
 	
 	adc2: mcp3428@6b {
+		status = "okay";
+		label = "U20";
 		compatible = "microchip,mcp3428";
+		#io-channel-cells = <1>;
 		reg = <0x6b>;
 	};
 	
 	adc3: mcp3428@6c {
+		status = "okay";
+		label = "U27";
 		compatible = "microchip,mcp3428";
+		#io-channel-cells = <1>;
 		reg = <0x6c>;
 	};
 	
 	adc4: mcp3428@6d {
+		status = "okay";
+		label = "U32";
 		compatible = "microchip,mcp3428";
+		#io-channel-cells = <1>;
 		reg = <0x6d>;
 	};
 	
 	adc_out: mcp3425@68 {
+		status = "okay";
+		label = "U49";
 		compatible = "microchip,mcp3425";
+		#io-channel-cells = <1>;
 		reg = <0x68>;
 	};
 	
 	display: ssd1306@3d {
-		compatible = "solomon_ssd1306fb";
+		status = "okay";
+		compatible = "solomon,ssd1306fb";
 		reg = <0x3d>;
         label = "SSD1306";
 	    width = <128>;

@@ -17,7 +17,14 @@ menuconfig GPIO_ZDU0110XXX
 	  read/write support.  Interrupts are supported only on
 	  GPIO0 and GPIO1.
 
-config GPIO_ZDU0110_INIT_PRIORITY
+config  GPIO_ZDU0110XXX_INTERRUPT
+	bool "ZDU0110xxx GPIO Interrupt support"
+	depends on GPIO_ZDU0110XXX
+	help
+	  Enable the use of the GPIO interrupt.  Interrupts are 
+	  generated on changes on only GPIO0 and GPIO1.
+
+config GPIO_ZDU0110XXX_INIT_PRIORITY
 	int "Driver init priority"
 	default 99
 	depends on GPIO_ZDU0110XXX

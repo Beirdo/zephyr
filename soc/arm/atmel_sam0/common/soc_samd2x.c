@@ -29,7 +29,7 @@ static void flash_waitstates_init(void)
 
 static void xosc_init(void)
 {
-#ifdef CONFIG_SOC_ATMEL_SAMD_XOSC
+#ifdef CONFIG_SOC_ATMEL_SAMD2X_XOSC
 #error External oscillator support is not implemented.
 #endif
 }
@@ -42,7 +42,7 @@ static void wait_gclk_synchronization(void)
 
 static void xosc32k_init(void)
 {
-#ifdef CONFIG_SOC_ATMEL_SAMD_XOSC32K
+#ifdef CONFIG_SOC_ATMEL_SAMD2X_XOSC32K
 	SYSCTRL->XOSC32K.reg = SYSCTRL_XOSC32K_STARTUP(6) |
 			       SYSCTRL_XOSC32K_XTALEN | SYSCTRL_XOSC32K_EN32K;
 
@@ -79,11 +79,11 @@ static void dfll_init(void)
 	wait_gclk_synchronization();
 
 
-#if defined(CONFIG_SOC_ATMEL_SAMD_XOSC32K_AS_MAIN)
+#if defined(CONFIG_SOC_ATMEL_SAMD2X_XOSC32K_AS_MAIN)
 	/* Route XOSC32K to GCLK1 */
 	GCLK->GENCTRL.reg =
 	    GCLK_GENCTRL_ID(1) | GCLK_GENCTRL_SRC_XOSC32K | GCLK_GENCTRL_GENEN;
-#elif defined(CONFIG_SOC_ATMEL_SAMD_OSC8M_AS_MAIN)
+#elif defined(CONFIG_SOC_ATMEL_SAMD2X_OSC8M_AS_MAIN)
 	/* Route OSC8M to GCLK1 */
 	GCLK->GENCTRL.reg =
 	    GCLK_GENCTRL_ID(1) | GCLK_GENCTRL_SRC_OSC8M | GCLK_GENCTRL_GENEN;

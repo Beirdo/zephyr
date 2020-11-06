@@ -1,0 +1,15 @@
+# Copyright (c) 2020 Gavin Hurlbut
+# SPDX-License-Identifier: Apache-2.0
+
+description: Base portion of ZDU0110xxx I2C-based UART
+
+include: [uart-controller.yaml, base.yaml]
+
+properties:
+    label:
+      required: true
+
+    interrupt-gpios:
+      type: phandle-array
+      required: false
+      description: Interrupt GPIO pin (active-low open-drain)

@@ -1,0 +1,91 @@
+/*
+ * Copyright (c) 2020 Gavin Hurlbut
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <atmel/samd1x.dtsi>
+
+/ {
+	aliases {
+	};
+
+	soc {
+		usb0: usb@41005000 {
+			compatible = "atmel,sam0-usb";
+			status = "disabled";
+			reg = <0x41005000 0x1000>;
+			interrupts = <7 0>;
+			num-bidir-endpoints = <8>;
+			label = "USB0";
+		};
+
+		dmac: dmac@41004800 {
+			compatible = "atmel,sam0-dmac";
+			reg = <0x41004800 0x50>;
+			interrupts = <6 0>;
+			label = "DMA_0";
+			#dma-cells = <2>;
+		};
+
+		tc1: tc@42001800 {
+			compatible = "atmel,sam0-tc32";
+			reg = <0x42001800 0x20>;
+			interrupts = <13 0>;
+			label = "TIMER_1";
+			clocks = <&gclk 0x1d>, <&pm 0x20 14>;
+			clock-names = "GCLK", "PM";
+		};
+
+		tc2: tc@42001c00 {
+			compatible = "atmel,sam0-tc32";
+			reg = <0x42001c00 0x20>;
+			interrupts = <14 0>;
+			label = "TIMER_2";
+			clocks = <&gclk 0x1d>, <&pm 0x20 14>;
+			clock-names = "GCLK", "PM";
+		};
+
+		tcc0: tcc@42001400 {
+			compatible = "atmel,sam0-tcc";
+			reg = <0x42001400 0x80>;
+			interrupts = <12 0>;
+			label = "TCC_0";
+			clocks = <&gclk 26>, <&pm 0x20 8>;
+			clock-names = "GCLK", "PM";
+
+			channels = <8>;
+			counter-size = <24>;
+		};
+	};
+};
+
+&dac0 {
+	interrupts = <17 0>;
+	clocks = <&gclk 22>, <&pm 0x20 18>;
+	clock-names = "GCLK", "PM";
+};
+
+&sercom0 {
+	interrupts = <9 0>;
+	clocks = <&gclk 0x14>, <&pm 0x20 2>;
+	clock-names = "GCLK", "PM";
+};
+
+&sercom1 {
+	interrupts = <10 0>;
+	clocks = <&gclk 0x15>, <&pm 0x20 3>;
+	clock-names = "GCLK", "PM";
+};
+
+&sercom2 {
+	interrupts = <11 0>;
+	clocks = <&gclk 0x16>, <&pm 0x20 4>;
+	clock-names = "GCLK", "PM";
+};
+
+&adc {
+	clocks = <&gclk 0x1e>, <&pm 0x20 16>;
+	clock-names = "GCLK", "PM";
+	interrupts = <15 0>;
+};

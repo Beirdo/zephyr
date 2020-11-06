@@ -1,0 +1,5 @@
+description: Microchip MCP3425
+
+compatible: "microchip,mcp3425"
+
+include: microchip,mcp342x-base.yaml
