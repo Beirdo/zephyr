@@ -873,9 +873,7 @@ int uart_zdu0110xxx_line_ctrl_set(const struct device *dev, uint32_t ctrl,
 int uart_zdu0110xxx_line_ctrl_get(const struct device *dev, uint32_t ctrl,
 			     uint32_t *val)
 {
-	const struct uart_zdu0110xxx_drv_config *config = dev->config;
 	const struct uart_zdu0110xxx_port_data *data = dev->data;
-	uint8_t uart_number = data->uart_number;
 
 	if (!val) {
 		return 0;
@@ -919,19 +917,14 @@ static const struct uart_driver_api uart_zdu0110xxx_driver_api = {
 
 
 
-#define DT_INST_MASTER(inst, t) DT_INST(inst, zilog_zdu0110##t##)
+#define DT_INST_MASTER(inst, t) DT_INST(inst, zilog_zdu0110##t)
 #define DT_INST_PORT(inst, t) DT_INST(inst, zilog_zdu0110##t##_port)
-
-#define GET_CURRENT_SPEED_COMMA(id)	DT_PROP(id, current_speed),
-#define NULL_COMMA(id)		NULL,
-#define GET_INT_GPIO(id, t)	(DT_INST_MASTER(id, t), interrupt_gpios)
-
 
 #define UART_ZDU0110XXX_PORT_DEVICE(t, id)									\
 	static struct uart_zdu0110xxx_port_data									\
 			uart_zdu0110##t##_port_##id##_data = {							\
 		.is_port = true,													\
-		.parent_dev_name = DT_BUS_LABEL(DT_INST_PORT(id, t)),				\
+		.parent_dev_name = DT_BUS_LABEL(DT_INST_MASTER(id, t)),				\
 		.uart_number = DT_PROP(DT_INST_PORT(id, t), port_number),			\
 		.baudrate = DT_PROP(DT_INST_PORT(id, t), current_speed),			\
 		.uart_enable = 0x00,												\
@@ -955,22 +948,19 @@ static const struct uart_driver_api uart_zdu0110xxx_driver_api = {
 #define UART_ZDU0110XXX_PARENT_DEVICE(t, id, uartcount)						\
 	static const struct uart_zdu0110xxx_drv_config							\
 			uart_zdu0110##t##_##id##_cfg = {								\
-		.parent_dev_name = DT_INST_BUS_LABEL(DT_INST_MASTER(id, t)),		\
-		.uart_count = uartcount,											\
 		IF_ENABLED(CONFIG_UART_INTERRUPT_DRIVEN, (							\
-			.cb = NULL,														\
-			IF_ENABLED(DT_INST_NODE_HAS_PROP(GET_INT_GPIO(id, t)), (		\
-			.int_gpio_port = DT_INST_GPIO_LABEL(GET_INT_GPIO(id, t)),		\
-			.int_gpio_pin = DT_INST_GPIO_PIN(GET_INT_GPIO(id, t)),			\
-			.int_gpio_flags = DT_INST_GPIO_FLAGS(GET_INT_GPIO(id, t)),		\
-		)))),																\
+			IF_ENABLED(DT_INST_NODE_HAS_PROP(DT_INST_MASTER(id, t), interrupt_gpios), (		\
+			.int_gpio_port = DT_INST_GPIO_LABEL(DT_INST_MASTER(id, t), interrupt_gpios),		\
+			.int_gpio_pin = DT_INST_GPIO_PIN(DT_INST_MASTER(id, t), interrupt_gpios),			\
+			.int_gpio_flags = DT_INST_GPIO_FLAGS(DT_INST_MASTER(id, t), interrupt_gpios),		\
+		))))																\
 	};																		\
 																			\
 	static struct uart_zdu0110xxx_parent_data								\
 			uart_zdu0110##t##_##id##_data = {								\
 		.is_port = false,													\
 		.child_count = uartcount,											\
-		.children = { DT_FOREACH_CHILD(DT_INST_MASTER, NULL_COMMA) },		\
+		.children = { NULL, NULL },											\
 	};																		\
 																			\
 	DEVICE_INIT(uart_zdu0110##t##_##id,										\

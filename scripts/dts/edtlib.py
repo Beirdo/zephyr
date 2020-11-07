@@ -2457,4 +2457,7 @@ _DEFAULT_PROP_TYPES = {
     "interrupts-extended": "compound",
     "interrupt-names": "string-array",
     "interrupt-controller": "boolean",
+    "port-number": "int",
+    "current-speed": "int",
+    "ngpios": "int",
 }

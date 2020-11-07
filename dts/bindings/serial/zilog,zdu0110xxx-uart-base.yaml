@@ -3,7 +3,7 @@
 
 description: Base portion of ZDU0110xxx I2C-based UART
 
-include: [uart-controller.yaml, base.yaml]
+include: [uart-controller.yaml, i2c-device.yaml]
 
 properties:
     label:
