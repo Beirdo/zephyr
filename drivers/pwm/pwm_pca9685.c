@@ -141,6 +141,7 @@ static int pwm_pca9685_get_cycles_per_sec(const struct device *dev,
 	ARG_UNUSED(pwm);
 	
 	*cycles = drv_data->cycles_per_sec;
+	return 0;
 }
 
 

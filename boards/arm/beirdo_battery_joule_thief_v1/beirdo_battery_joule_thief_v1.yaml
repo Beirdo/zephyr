@@ -5,8 +5,8 @@ identifier: battery_joule_thief_v1
 name: Beirdo's Battery Joule Thief v1
 type: mcu
 arch: arm
-ram: 4
-flash: 16
+ram: 8
+flash: 64
 toolchain:
   - zephyr
   - gnuarmemb

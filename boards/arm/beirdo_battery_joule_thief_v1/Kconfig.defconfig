@@ -1,6 +1,6 @@
-# SAM D21 Xplained Pro board configuration
+# Beirdo's Battery Joule Thief v1 board config
 
-# Copyright (c) 2018 Bryan O'Donoghue
+# Copyright (c) 2020 Gavin Hurlbut
 # SPDX-License-Identifier: Apache-2.0
 
 config BOARD

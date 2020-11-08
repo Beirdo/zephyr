@@ -4,11 +4,11 @@
  */
 
 /dts-v1/;
-#include <atmel/samd11.dtsi>
+#include <atmel/samd21.dtsi>
 
 / {
 	model = "Beirdo's Battery Joule Thief v1";
-	compatible = "beirdo,battery_joule_thief_v1", "atmel,samd11c14a", "atmel,samd11";
+	compatible = "beirdo,battery_joule_thief_v1", "atmel,samd21e16a", "atmel,samd21";
 
 	chosen {
 		zephyr,console = &sercom0;
@@ -18,7 +18,7 @@
 	};
 
 	aliases {
-		i2c-0 = &sercom1;
+		i2c-0 = &sercom2;
 		led0 = &led1ag;
 	};
 
@@ -178,13 +178,18 @@
 	};
 };
 
-&dmac {
-	status = "okay";
-};
-
 &cpu0 {
 	clock-frequency = <48000000>;
 };
+
+&sram0 {
+	reg = <0x20000000 0x2000>;
+};
+
+&flash0 {
+	reg = <0 0x10000>;
+};
+
 
 &sercom0 {
         status = "okay";

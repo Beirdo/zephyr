@@ -5,7 +5,7 @@
 
 zephyr_sources_ifdef(CONFIG_BOOTLOADER_BOSSA bossa.c)
 
-zephyr_sources_ifdef(CONFIG_SOC_SERIES_SAMD21 soc_samd1x.c)
+zephyr_sources_ifdef(CONFIG_SOC_SERIES_SAMD11 soc_samd1x.c)
 
 zephyr_sources_ifdef(CONFIG_SOC_SERIES_SAMD20 soc_samd2x.c)
 zephyr_sources_ifdef(CONFIG_SOC_SERIES_SAMD21 soc_samd2x.c)

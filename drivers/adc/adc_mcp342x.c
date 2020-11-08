@@ -415,7 +415,7 @@ static const struct adc_driver_api mcp342x_adc_api = {
 			    &mcp##t##_data_##n, 										\
 			    &mcp##t##_config_##n,										\
 			    POST_KERNEL,												\
-			    CONFIG_ADC_MCP320X_INIT_PRIORITY,							\
+			    CONFIG_ADC_MCP342X_INIT_PRIORITY,							\
 			    &mcp342x_adc_api);
 
 
