@@ -22,7 +22,6 @@ LOG_MODULE_REGISTER(adc_mcp342x, CONFIG_ADC_LOG_LEVEL);
 #define ADC_CONTEXT_USES_KERNEL_TIMER
 #include "adc_context.h"
 
-#define MCP342X_RESOLUTION 12U
 
 struct mcp342x_drv_config {
 	uint8_t channels;
@@ -40,9 +39,10 @@ struct mcp342x_drv_data {
 	const struct adc_channel_cfg channel_cfg[4];
 	
 	/* bitmap of configured channels */
-	uint8_t channels;
+	uint8_t channel_mask;
 
 	/* sample buffer */
+	uint8_t sequence_mask;
 	uint16_t *buffer;
 	uint16_t *repeat_buffer;
 
@@ -51,12 +51,10 @@ struct mcp342x_drv_data {
 	
 	/** Master I2C device */
 	const struct device *i2c_master;
-
-	struct k_sem lock;
-	struct k_thread thread;
-
-	K_KERNEL_STACK_MEMBER(stack,
-			CONFIG_ADC_MCP342X_ACQUISITION_THREAD_STACK_SIZE);
+	
+	struct k_work scan_worker;
+	struct k_work sample_worker;
+	struct k_delayed_work result_worker;
 };
 
 static int mcp342x_channel_setup(const struct device *dev,
@@ -64,6 +62,7 @@ static int mcp342x_channel_setup(const struct device *dev,
 {
 	const struct mcp342x_drv_config *config = dev->config;
 	struct mcp342x_drv_data *data = dev->data;
+	uint8_t channel_number = channel_cfg->channel_id;
 
 	switch(channel_cfg->gain){
 		case ADC_GAIN_1:
@@ -88,12 +87,13 @@ static int mcp342x_channel_setup(const struct device *dev,
 		return -ENOTSUP;
 	}
 
-	if (channel_cfg->channel_id >= config->channels) {
-		LOG_ERR("unsupported channel id '%d'", channel_cfg->channel_id);
+	if (channel_number >= config->channels) {
+		LOG_ERR("unsupported channel id '%d'", channel_number);
 		return -ENOTSUP;
 	}
 
-	memcpy((void *)&data->channel_cfg[channel_cfg->channel_id], (const void *)channel_cfg, sizeof(channel_cfg));
+	memcpy((void *)&data->channel_cfg[channel_number], (const void *)channel_cfg, sizeof(channel_cfg));
+	data->channel_mask |= BIT(channel_number);
 
 	return 0;
 }
@@ -101,12 +101,12 @@ static int mcp342x_channel_setup(const struct device *dev,
 static int mcp342x_validate_buffer_size(const struct device *dev,
 					const struct adc_sequence *sequence)
 {
-	const struct mcp342x_drv_config *config = dev->config;
+	const struct mcp342x_drv_data *data = dev->data;
 	uint8_t channels = 0;
 	size_t needed;
 	uint32_t mask;
 
-	for (mask = BIT(config->channels - 1); mask != 0; mask >>= 1) {
+	for (mask = data->channel_mask; mask != 0; mask >>= 1) {
 		if (mask & sequence->channels) {
 			channels++;
 		}
@@ -127,7 +127,6 @@ static int mcp342x_validate_buffer_size(const struct device *dev,
 static int mcp342x_start_read(const struct device *dev,
 			      const struct adc_sequence *sequence)
 {
-	const struct mcp342x_drv_config *config = dev->config;
 	struct mcp342x_drv_data *data = dev->data;
 	int err;
 
@@ -142,7 +141,7 @@ static int mcp342x_start_read(const struct device *dev,
 			return -ENOTSUP;
 	}	
 
-	if (find_msb_set(sequence->channels) > config->channels) {
+	if ((sequence->channels & ~data->channel_mask) != 0x00) {
 		LOG_ERR("unsupported channels in mask: 0x%08x",
 			sequence->channels);
 		return -ENOTSUP;
@@ -155,6 +154,7 @@ static int mcp342x_start_read(const struct device *dev,
 	}
 
 	data->buffer = sequence->buffer;
+	data->sequence_mask = sequence->channels;
 	adc_context_start_read(&data->ctx, sequence);
 
 	return adc_context_wait_for_completion(&data->ctx);
@@ -177,17 +177,25 @@ static int mcp342x_read_async(const struct device *dev,
 static int mcp342x_read(const struct device *dev,
 			const struct adc_sequence *sequence)
 {
-	return mcp342x_read_async(dev, sequence, NULL);
+	struct mcp342x_drv_data *data = dev->data;
+	int ret;
+
+	ret = mcp342x_read_async(dev, sequence, NULL);
+	if (ret != 0) {
+		return ret;
+	}
+	
+	return adc_context_wait_for_completion(&data->ctx);
 }
 
 static void adc_context_start_sampling(struct adc_context *ctx)
 {
 	struct mcp342x_drv_data *data = CONTAINER_OF(ctx, struct mcp342x_drv_data, ctx);
 
-	data->channels = ctx->sequence.channels;
+	data->sequence_mask = ctx->sequence.channels;
 	data->repeat_buffer = data->buffer;
 
-	k_sem_give(&data->lock);
+	k_work_submit(&data->scan_worker);
 }
 
 static void adc_context_update_buffer_pointer(struct adc_context *ctx,
@@ -206,9 +214,33 @@ static int mcp342x_read_channel(const struct device *dev,
 	const struct mcp342x_drv_config *config = dev->config;
 	struct mcp342x_drv_data *data = dev->data;
 	
-	uint8_t tx_config;
 	uint8_t rx_buffer[3];
-	/* need to get this from the sequence! */
+	uint8_t resolution = ctx->sequence.resolution;	
+	int err;
+
+	err = i2c_read(data->i2c_master, rx_buffer, 3, config->i2c_slave_addr);
+	if (err) {
+		return err;
+	}
+
+	*result = sys_get_be16(rx_buffer);
+	*result &= BIT_MASK(resolution);
+
+	if ((rx_buffer[2] & 0x80) != 0) {
+		return -EBUSY;
+	}
+
+	return 0;
+}
+
+
+static int mcp342x_sample_channel(const struct device *dev, 
+				struct adc_context *ctx, uint8_t channel, k_timeout_t *delay)
+{
+	const struct mcp342x_drv_config *config = dev->config;
+	struct mcp342x_drv_data *data = dev->data;
+	
+	uint8_t tx_config;
 	uint8_t resolution = ctx->sequence.resolution;	
 	uint32_t acq_time;
 	int err;
@@ -261,56 +293,73 @@ static int mcp342x_read_channel(const struct device *dev,
 		return err;
 	}
 
-	/* Delay for the sample time before reading */
-	k_usleep(acq_time);
-
-	err = i2c_read(data->i2c_master, rx_buffer, 3, config->i2c_slave_addr);
-	if (err) {
-		return err;
+	if (delay) {
+		*delay = K_USEC(acq_time);
 	}
-
-	*result = sys_get_be16(rx_buffer);
-	*result &= BIT_MASK(resolution);
-
-	if ((rx_buffer[2] & 0x80) != 0) {
-		return -EBUSY;
-	}
-
 	return 0;
 }
 
-static void mcp342x_acquisition_thread(struct mcp342x_drv_data *data)
+
+static void mcp342x_scan_worker(struct k_work *work)
 {
-	uint16_t result = 0;
-	uint8_t channel;
-	int err;
+	struct mcp342x_drv_data * const data = CONTAINER_OF(
+		work, struct mcp342x_drv_data, scan_worker);
 
-	while (true) {
-		k_sem_take(&data->lock, K_FOREVER);
-
-		while (data->channels) {
-			channel = find_lsb_set(data->channels) - 1;
-
-			LOG_DBG("reading channel %d", channel);
-
-			err = mcp342x_read_channel(data->dev, &data->ctx, channel, &result);
-			if (err) {
-				LOG_ERR("failed to read channel %d (err %d)",
-					channel, err);
-				adc_context_complete(&data->ctx, err);
-				break;
-			}
-
-			LOG_DBG("read channel %d, result = %d", channel,
-				result);
-
-			*data->buffer++ = result;
-			WRITE_BIT(data->channels, channel, 0);
-		}
-
+	if (data->sequence_mask != 0x00) {
+		k_work_submit(&data->sample_worker);
+	} else {
 		adc_context_on_sampling_done(&data->ctx, data->dev);
 	}
 }
+
+
+static void mcp342x_sample_worker(struct k_work *work)
+{
+	struct mcp342x_drv_data * const data = CONTAINER_OF(
+		work, struct mcp342x_drv_data, sample_worker);
+
+	uint8_t channel = find_lsb_set(data->sequence_mask) - 1;
+	k_timeout_t delay;
+
+	LOG_DBG("sampling channel %d", channel);
+
+	int err = mcp342x_sample_channel(data->dev, &data->ctx, channel, &delay);
+	if (err) {
+		LOG_ERR("failed to read channel %d (err %d)",
+			channel, err);
+		adc_context_complete(&data->ctx, err);
+	}
+
+	k_delayed_work_submit(&data->result_worker, delay);
+}
+
+
+static void mcp342x_result_worker(struct k_work *work)
+{
+	struct mcp342x_drv_data * const data = CONTAINER_OF(
+		work, struct mcp342x_drv_data, result_worker);
+
+	uint16_t result = 0;
+	uint8_t channel = find_lsb_set(data->sequence_mask) - 1;
+
+	LOG_DBG("reading channel %d", channel);
+
+	int err = mcp342x_read_channel(data->dev, &data->ctx, channel, &result);
+	if (err) {
+		LOG_ERR("failed to read channel %d (err %d)",
+			channel, err);
+		adc_context_complete(&data->ctx, err);
+	}
+
+	LOG_DBG("read channel %d, result = %d", channel, result);
+
+	*data->buffer++ = result;
+	WRITE_BIT(data->sequence_mask, channel, 0);
+	
+	k_work_submit(&data->scan_worker);
+}
+
+
 
 static int mcp342x_init(const struct device *dev)
 {
@@ -325,16 +374,13 @@ static int mcp342x_init(const struct device *dev)
 	if (!i2c_master) {
 		return -EINVAL;
 	}
-	data->i2c_master = i2c_master;
 
-	k_sem_init(&data->lock, 0, 1);
-	
-	k_thread_create(&data->thread, data->stack,
-			CONFIG_ADC_MCP342X_ACQUISITION_THREAD_STACK_SIZE,
-			(k_thread_entry_t)mcp342x_acquisition_thread,
-			data, NULL, NULL,
-			CONFIG_ADC_MCP342X_ACQUISITION_THREAD_PRIO,
-			0, K_NO_WAIT);
+	data->i2c_master = i2c_master;
+	data->channel_mask = 0x00;
+
+	k_work_init(&data->scan_worker, mcp342x_scan_worker);
+	k_work_init(&data->sample_worker, mcp342x_sample_worker);
+	k_delayed_work_init(&data->result_worker, mcp342x_result_worker);
 
 	adc_context_unlock_unconditionally(&data->ctx);
 
@@ -371,6 +417,7 @@ static const struct adc_driver_api mcp342x_adc_api = {
 			    POST_KERNEL,												\
 			    CONFIG_ADC_MCP320X_INIT_PRIORITY,							\
 			    &mcp342x_adc_api);
+
 
 /*
  * MCP3425: 1 channel

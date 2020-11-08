@@ -50,6 +50,9 @@ struct uart_zdu0110xxx_parent_data {
 
 	struct k_sem lock;
 
+	uint8_t cmd_buf[64];
+	uint8_t rsp_buf[64];
+
 #ifdef CONFIG_UART_INTERRUPT_DRIVEN
 	/* Self-reference to the driver instance */
 	const struct device *instance;
@@ -84,6 +87,42 @@ struct uart_zdu0110xxx_port_data {
 };
 
 
+int zdu0110xxx_get_buffers(const struct device *dev, uint8_t **cmd_buf, uint8_t **rsp_buf)
+{
+	struct uart_zdu0110xxx_parent_data * data = dev->data;
+
+	/* Can't do I2C bus operations from an ISR */
+	if (k_is_in_isr()) {
+		return -EWOULDBLOCK;
+	}
+
+	k_sem_take(&data->lock, K_FOREVER);
+	
+	if (cmd_buf) {
+		*cmd_buf = data->cmd_buf;
+	}
+	
+	if (rsp_buf) {
+		*rsp_buf = data->rsp_buf;
+	}
+	
+	return 0;
+}
+
+int zdu0110xxx_release_buffers(const struct device *dev)
+{
+	struct uart_zdu0110xxx_parent_data * data = dev->data;
+
+	/* Can't do I2C bus operations from an ISR */
+	if (k_is_in_isr()) {
+		return -EWOULDBLOCK;
+	}
+
+	k_sem_give(&data->lock);
+	return 0;
+}
+
+
 uint8_t zdu0110xxx_get_slave_addr(const struct device *dev)
 {
 	const struct uart_zdu0110xxx_drv_config * const config = dev->config;
@@ -111,6 +150,10 @@ int zdu0110xxx_send_command(const struct device *dev,
 	const struct device *i2c_master = data->i2c_master;
 	uint16_t i2c_addr = config->i2c_slave_addr;
 	int ret;
+	
+	if (cmd_buf_len > 64 || rsp_buf_len > 64) {
+		return -EINVAL;
+	}
 
 	if (rsp_buf) {
 		ret = i2c_write_read(i2c_master, i2c_addr, cmd_buf, cmd_buf_len, 
@@ -138,9 +181,9 @@ static int uart_zdu0110xxx_poll_in(const struct device *dev, unsigned char *c)
 	
 	struct uart_zdu0110xxx_parent_data *parent_data = parent->data;
 
-	uint8_t cmd[16];
+	uint8_t *cmd = parent_data->cmd_buf;
 	size_t cmd_len;
-	uint8_t rsp[1];
+	uint8_t *rsp = parent_data->rsp_buf;
 	uint8_t uart_number = data->uart_number;
 	int ret;
 
@@ -187,7 +230,7 @@ static void uart_zdu0110xxx_poll_out(const struct device *dev,
 	
 	struct uart_zdu0110xxx_parent_data *parent_data = parent->data;
 
-	uint8_t cmd[16];
+	uint8_t *cmd = parent_data->cmd_buf;
 	size_t cmd_len;
 	uint8_t uart_number = data->uart_number;
 	int ret;
@@ -222,11 +265,10 @@ static int uart_zdu0110xxx_fifo_fill(const struct device *dev,
 	
 	struct uart_zdu0110xxx_parent_data *parent_data = parent->data;
 
-	uint8_t cmd[65];
+	uint8_t *cmd = parent_data->cmd_buf;
 	size_t cmd_len;
 	int num_tx = 0;
-	int index;
-	uint8_t rsp[2];
+	uint8_t *rsp = parent_data->rsp_buf;
 	uint8_t tx_fifo_level;
 	int ret;
 
@@ -253,14 +295,18 @@ static int uart_zdu0110xxx_fifo_fill(const struct device *dev,
 	tx_fifo_level = rsp[1];
 	
 	num_tx = size > 64 - tx_fifo_level ? 64 - tx_fifo_level : size;
+	num_tx = num_tx > 63 ? 63 : num_tx;
+	
+	if (num_tx == 0) {
+		goto done;
+	}
 	
 	cmd_len = 0;
 	cmd[cmd_len++] = ZDU_CMD_UART_TX_DATA(data->uart_number);
 	
-	for (index = 0; index < num_tx; index++) {
-		cmd[cmd_len++] = tx_data[index]; 
-	}
-	
+	memcpy(&cmd[cmd_len], tx_data, num_tx);
+	cmd_len += num_tx;
+
 	ret = zdu0110xxx_send_command(parent, cmd, cmd_len, NULL, 0);
 
 	if (ret != 0) {
@@ -274,8 +320,7 @@ done:
 }
 
 static int uart_zdu0110xxx_fifo_read(const struct device *dev,
-							uint8_t *rx_data,
-							const int size)
+							uint8_t *rx_data, const int size)
 {
 	const struct uart_zdu0110xxx_port_data *data = dev->data;
 	const struct device *parent = data->parent;
@@ -285,10 +330,10 @@ static int uart_zdu0110xxx_fifo_read(const struct device *dev,
 	
 	struct uart_zdu0110xxx_parent_data *parent_data = parent->data;
 
-	uint8_t cmd[16];
+	uint8_t *cmd = parent_data->cmd_buf;
 	size_t cmd_len;
 	int num_rx = 0;
-	uint8_t rsp[2];
+	uint8_t *rsp = parent_data->rsp_buf;
 	uint8_t rx_fifo_level;
 	int ret;
 
@@ -331,7 +376,8 @@ done:
 	return num_rx;
 }
 
-static void uart_zdu0110xxx_irq_tx_enable(const struct device *dev)
+static void zdu0110xxx_uart_irq_change(const struct device *dev, bool enable, 
+		bool int_change, uint8_t int_val, bool uart_change, uint8_t uart_val)
 {
 	struct uart_zdu0110xxx_port_data *data = dev->data;
 	const struct device *parent = data->parent;
@@ -341,7 +387,7 @@ static void uart_zdu0110xxx_irq_tx_enable(const struct device *dev)
 	
 	struct uart_zdu0110xxx_parent_data *parent_data = parent->data;
 
-	uint8_t cmd[4];
+	uint8_t *cmd = parent_data->cmd_buf;
 	size_t cmd_len;
 	int ret;
 
@@ -353,56 +399,49 @@ static void uart_zdu0110xxx_irq_tx_enable(const struct device *dev)
 	k_sem_take(&parent_data->lock, K_FOREVER);
 
 	cmd_len = 0;
-	cmd[cmd_len++] = ZDU_CMD_UART_SET_INT_ENABLE(data->uart_number);
-	data->int_enable |= 0xC0;	/* All TX interrupts */
+	if (int_change) {
+		int_val &= 0xCF;
+		
+		cmd[cmd_len++] = ZDU_CMD_UART_SET_INT_ENABLE(data->uart_number);
+		if (enable) {
+			data->int_enable |= int_val;
+		} else {
+			data->int_enable &= ~int_val;
+		}
+
+		cmd[cmd_len++] = data->int_enable;
+	}
 	
-	cmd[cmd_len++] = data->int_enable;
-	cmd[cmd_len++] = ZDU_CMD_UART_SET_ENABLE(data->uart_number);
-	data->uart_enable |= 0x02;	/* TXE */
-	cmd[cmd_len++] = data->uart_enable;
+	if (uart_change) {
+		uart_val &= 0x03;	
 	
-	ret = zdu0110xxx_send_command(parent, cmd, cmd_len, NULL, 0);
+		cmd[cmd_len++] = ZDU_CMD_UART_SET_ENABLE(data->uart_number);
+		if (enable) {
+			data->uart_enable |= uart_val;
+		} else {
+			data->uart_enable &= ~uart_val;
+		}
+
+		cmd[cmd_len++] = data->uart_enable;
+	}
+
+	if (cmd_len != 0) {	
+		ret = zdu0110xxx_send_command(parent, cmd, cmd_len, NULL, 0);
+	}
 
 	k_sem_give(&parent_data->lock);
 
 	ARG_UNUSED(ret);
 }
 
+static void uart_zdu0110xxx_irq_tx_enable(const struct device *dev)
+{
+	zdu0110xxx_uart_irq_change(dev, true, true, 0xC0, true, 0x02); 
+}
+
 static void uart_zdu0110xxx_irq_tx_disable(const struct device *dev)
 {
-	struct uart_zdu0110xxx_port_data *data = dev->data;
-	const struct device *parent = data->parent;
-	if (!parent) {
-		return;
-	}
-	
-	struct uart_zdu0110xxx_parent_data *parent_data = parent->data;
-
-	uint8_t cmd[4];
-	size_t cmd_len;
-	int ret;
-
-	/* Can't do I2C bus operations from an ISR */
-	if (k_is_in_isr()) {
-		return;
-	}
-
-	k_sem_take(&parent_data->lock, K_FOREVER);
-
-	cmd_len = 0;
-	cmd[cmd_len++] = ZDU_CMD_UART_SET_INT_ENABLE(data->uart_number);
-	data->int_enable &= 0x1F;	/* All TX interrupts disabled */
-	
-	cmd[cmd_len++] = data->int_enable;
-	cmd[cmd_len++] = ZDU_CMD_UART_SET_ENABLE(data->uart_number);
-	data->uart_enable &= 0x01;	/* TXE off */
-	cmd[cmd_len++] = data->uart_enable;
-	
-	ret = zdu0110xxx_send_command(parent, cmd, cmd_len, NULL, 0);
-
-	k_sem_give(&parent_data->lock);
-
-	ARG_UNUSED(ret);
+	zdu0110xxx_uart_irq_change(dev, false, true, 0xC0, true, 0x02); 
 }
 
 static int uart_zdu0110xxx_irq_tx_ready(const struct device *dev)
@@ -415,76 +454,12 @@ static int uart_zdu0110xxx_irq_tx_ready(const struct device *dev)
 
 static void uart_zdu0110xxx_irq_rx_enable(const struct device *dev)
 {
-	struct uart_zdu0110xxx_port_data *data = dev->data;
-	const struct device *parent = data->parent;
-	if (!parent) {
-		return;
-	}
-	
-	struct uart_zdu0110xxx_parent_data *parent_data = parent->data;
-
-	uint8_t cmd[4];
-	size_t cmd_len;
-	int ret;
-
-	/* Can't do I2C bus operations from an ISR */
-	if (k_is_in_isr()) {
-		return;
-	}
-
-	k_sem_take(&parent_data->lock, K_FOREVER);
-
-	cmd_len = 0;
-	cmd[cmd_len++] = ZDU_CMD_UART_SET_INT_ENABLE(data->uart_number);
-	data->int_enable |= 0x0C;	/* All RX interrupts */
-	
-	cmd[cmd_len++] = data->int_enable;
-	cmd[cmd_len++] = ZDU_CMD_UART_SET_ENABLE(data->uart_number);
-	data->uart_enable |= 0x01;	/* RXE */
-	cmd[cmd_len++] = data->uart_enable;
-	
-	ret = zdu0110xxx_send_command(parent, cmd, cmd_len, NULL, 0);
-
-	k_sem_give(&parent_data->lock);
-
-	ARG_UNUSED(ret);
+	zdu0110xxx_uart_irq_change(dev, true, true, 0x0C, true, 0x01); 
 }
 
 static void uart_zdu0110xxx_irq_rx_disable(const struct device *dev)
 {
-	struct uart_zdu0110xxx_port_data *data = dev->data;
-	const struct device *parent = data->parent;
-	if (!parent) {
-		return;
-	}
-	
-	struct uart_zdu0110xxx_parent_data *parent_data = parent->data;
-
-	uint8_t cmd[4];
-	size_t cmd_len;
-	int ret;
-
-	/* Can't do I2C bus operations from an ISR */
-	if (k_is_in_isr()) {
-		return;
-	}
-
-	k_sem_take(&parent_data->lock, K_FOREVER);
-
-	cmd_len = 0;
-	cmd[cmd_len++] = ZDU_CMD_UART_SET_INT_ENABLE(data->uart_number);
-	data->int_enable &= 0xC1;	/* All RX interrupts disabled */
-	
-	cmd[cmd_len++] = data->int_enable;
-	cmd[cmd_len++] = ZDU_CMD_UART_SET_ENABLE(data->uart_number);
-	data->uart_enable &= 0x02;	/* RXE disabled */
-	cmd[cmd_len++] = data->uart_enable;
-	
-	ret = zdu0110xxx_send_command(parent, cmd, cmd_len, NULL, 0);
-
-	k_sem_give(&parent_data->lock);
-
-	ARG_UNUSED(ret);
+	zdu0110xxx_uart_irq_change(dev, false, true, 0x0C, true, 0x01); 
 }
 
 static int uart_zdu0110xxx_irq_tx_complete(const struct device *dev)
@@ -505,68 +480,12 @@ static int uart_zdu0110xxx_irq_rx_ready(const struct device *dev)
 
 static void uart_zdu0110xxx_irq_err_enable(const struct device *dev)
 {
-	struct uart_zdu0110xxx_port_data *data = dev->data;
-	const struct device *parent = data->parent;
-	if (!parent) {
-		return;
-	}
-	
-	struct uart_zdu0110xxx_parent_data *parent_data = parent->data;
-
-	uint8_t cmd[4];
-	size_t cmd_len;
-	int ret;
-
-	/* Can't do I2C bus operations from an ISR */
-	if (k_is_in_isr()) {
-		return;
-	}
-
-	k_sem_take(&parent_data->lock, K_FOREVER);
-
-	cmd_len = 0;
-	cmd[cmd_len++] = ZDU_CMD_UART_SET_INT_ENABLE(data->uart_number);
-	data->int_enable |= 0x01;	/* ERR interrupt */
-	cmd[cmd_len++] = data->int_enable;
-
-	ret = zdu0110xxx_send_command(parent, cmd, cmd_len, NULL, 0);
-
-	k_sem_give(&parent_data->lock);
-
-	ARG_UNUSED(ret);
+	zdu0110xxx_uart_irq_change(dev, true, true, 0x01, false, 0x00); 
 }
 
 static void uart_zdu0110xxx_irq_err_disable(const struct device *dev)
 {
-	struct uart_zdu0110xxx_port_data *data = dev->data;
-	const struct device *parent = data->parent;
-	if (!parent) {
-		return;
-	}
-	
-	struct uart_zdu0110xxx_parent_data *parent_data = parent->data;
-
-	uint8_t cmd[4];
-	size_t cmd_len;
-	int ret;
-
-	/* Can't do I2C bus operations from an ISR */
-	if (k_is_in_isr()) {
-		return;
-	}
-
-	k_sem_take(&parent_data->lock, K_FOREVER);
-
-	cmd_len = 0;
-	cmd[cmd_len++] = ZDU_CMD_UART_SET_INT_ENABLE(data->uart_number);
-	data->int_enable &= 0xCC;	/* ERR interrupt disabled */
-	cmd[cmd_len++] = data->int_enable;
-
-	ret = zdu0110xxx_send_command(parent, cmd, cmd_len, NULL, 0);
-
-	k_sem_give(&parent_data->lock);
-
-	ARG_UNUSED(ret);
+	zdu0110xxx_uart_irq_change(dev, false, true, 0x01, false, 0x00); 
 }
 
 static int uart_zdu0110xxx_irq_is_pending(const struct device *dev)
@@ -588,7 +507,7 @@ static int uart_zdu0110xxx_irq_update(const struct device *dev)
 	struct uart_zdu0110xxx_parent_data *parent_data = parent->data;
 
     uint8_t uart_number = data->uart_number;
-    uint8_t cmd[16];
+    uint8_t *cmd = parent_data->cmd_buf;
     size_t cmd_len;
     int ret;
     
@@ -650,10 +569,7 @@ static void uart_zdu0110xxx_interrupt_callback(const struct device *dev,
 					    struct gpio_callback *cb,
 					    gpio_port_pins_t pins)
 {
-	struct uart_zdu0110xxx_parent_data * const data =
-		CONTAINER_OF(cb, struct uart_zdu0110xxx_parent_data, gpio_callback);
-
-	ARG_UNUSED(pins);
+	struct uart_zdu0110xxx_parent_data *data = dev->data;
 
 	/* Cannot read ZDU0110xxx registers from ISR context, queue worker */
 	k_work_submit(&data->interrupt_worker);
@@ -687,9 +603,7 @@ static int uart_zdu0110xxx_port_init(const struct device *dev);
 
 static int uart_zdu0110xxx_parent_init(const struct device *dev)
 {
-	const struct uart_zdu0110xxx_drv_config *config = dev->config;
 	struct uart_zdu0110xxx_parent_data *data = dev->data;
-	const struct device *int_gpio_dev;
 
 	if (data->is_port) {
 		return uart_zdu0110xxx_port_init(dev);
@@ -697,10 +611,13 @@ static int uart_zdu0110xxx_parent_init(const struct device *dev)
 
 	int ret = 0;
 
-	k_sem_init(&data->lock, 1, 1);
+	k_sem_init(&data->lock, 0, 1);
 
 #ifdef CONFIG_UART_INTERRUPT_DRIVEN
-	uint8_t cmd[16];
+	const struct uart_zdu0110xxx_drv_config *config = dev->config;
+	const struct device *int_gpio_dev;
+
+	uint8_t *cmd = data->cmd_buf;
 	size_t cmd_len;
 
 	/* Configure UART parent */
@@ -718,7 +635,8 @@ static int uart_zdu0110xxx_parent_init(const struct device *dev)
 		LOG_ERR("ZDU0110xxx[0x%X]: error getting UART interrupt GPIO"
 			" device (%s)", config->i2c_slave_addr,
 			config->int_gpio_port);
-		return -ENODEV;
+		ret = -ENODEV;
+		goto done;
 	}
 
 	ret = gpio_pin_configure(int_gpio_dev, config->int_gpio_pin,
@@ -727,7 +645,7 @@ static int uart_zdu0110xxx_parent_init(const struct device *dev)
 		LOG_ERR("ZDU0110xxx[0x%X]: failed to configure UART interrupt"
 			" pin %d (%d)", config->i2c_slave_addr,
 			config->int_gpio_pin, ret);
-		return ret;
+		goto done;
 	}
 
 	/* Prepare GPIO callback for interrupt pin */
@@ -737,6 +655,9 @@ static int uart_zdu0110xxx_parent_init(const struct device *dev)
 	gpio_add_callback(int_gpio_dev, &data->gpio_callback);
 
 	ret = zdu0110xxx_send_command(dev, cmd, cmd_len, NULL, 0);
+	
+done:
+	k_sem_give(&data->lock);
 #endif
 
 	return ret;
@@ -760,7 +681,7 @@ static int zdu0110xxx_set_baud_rate(const struct device *dev, uint32_t baudrate)
 	uint32_t actual_baud;
 	int8_t baud_percent_variance;
 	uint8_t uart_number = data->uart_number;
-	uint8_t cmd[16];
+	uint8_t *cmd = parent_data->cmd_buf;
 	size_t cmd_len;
 	int ret;
 
@@ -782,7 +703,8 @@ static int zdu0110xxx_set_baud_rate(const struct device *dev, uint32_t baudrate)
 		LOG_ERR("ZDU0110[0x%X]: requested baud rate (%d) not attainable,"
 				"closest match is %d, which is %d%% off",
 			config->i2c_slave_addr, baudrate, actual_baud, baud_percent_variance);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto done;
 	}
 
 	data->baudrate = actual_baud;
@@ -795,6 +717,7 @@ static int zdu0110xxx_set_baud_rate(const struct device *dev, uint32_t baudrate)
 
 	ret = zdu0110xxx_send_command(parent, cmd, cmd_len, NULL, 0);
 
+done:
 	k_sem_give(&parent_data->lock);
 
 	return ret;
@@ -826,7 +749,7 @@ static int uart_zdu0110xxx_port_init(const struct device *dev)
 	parent_data->children[uart_number] = dev;
 	
 	uint8_t config2;
-	uint8_t cmd[16];
+	uint8_t *cmd = parent_data->cmd_buf;
 	size_t cmd_len;
 	int ret;
 
@@ -835,6 +758,8 @@ static int uart_zdu0110xxx_port_init(const struct device *dev)
 	if (ret != 0) {
 		return ret;
 	}
+
+	k_sem_take(&parent_data->lock, K_FOREVER);
 
 	/* Configure UART */
 	cmd_len = 0;
@@ -854,10 +779,13 @@ static int uart_zdu0110xxx_port_init(const struct device *dev)
 	data->uart_enable = 0;
 #else
 	cmd[cmd_len++] = ZDU_CMD_UART_SET_ENABLE(uart_number);
-	cmd{cmd_len++] = 0x03;	/* RXE, TXE */
+	cmd[cmd_len++] = 0x03;	/* RXE, TXE */
 #endif
 
-	return zdu0110xxx_send_command(dev, cmd, cmd_len, NULL, 0);
+	ret = zdu0110xxx_send_command(dev, cmd, cmd_len, NULL, 0);
+	
+	k_sem_give(&parent_data->lock);
+	return ret;
 }
 
 int uart_zdu0110xxx_line_ctrl_set(const struct device *dev, uint32_t ctrl,

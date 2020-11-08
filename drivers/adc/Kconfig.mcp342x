@@ -6,6 +6,7 @@
 config ADC_MCP342X
 	bool "MCP3425/3426/3427/3428 driver"
 	depends on I2C
+	select ADC_ASYNC
 	help
 	  Enable MCP342x ADC driver.
 

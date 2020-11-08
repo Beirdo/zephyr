@@ -291,14 +291,15 @@
 			current-speed = < 57600 >;
 			reg = <0>;
 		};
-		
+
+/*		
 		eeprom@8 {
 			status = "okay";
 			compatible = "zilog,zdu0110xxx_eeprom";
 			label = "U38_EEPROM";
 			reg = <8>;
 		};
-		
+
 		gpio@9 {
 			status = "okay";
 			compatible = "zilog,zdu0110rfx_gpio";
@@ -309,6 +310,7 @@
 			ngpios = <3>;
 			reg = <9>;
 		};
+*/
 	};
 	
 	adc0: mcp3428@69 {

@@ -38,7 +38,8 @@ static int eeprom_zdu0110xxx_read(const struct device *dev,
 	const struct eeprom_zdu0110xxx_drv_config *config = dev->config;
 	struct eeprom_zdu0110xxx_data *data = dev->data;
 	int ret;
-	uint8_t cmd[3];
+	int err = 0;
+	uint8_t *cmd;
 	size_t cmd_len = 0;
 
 	if (!len) {
@@ -49,20 +50,33 @@ static int eeprom_zdu0110xxx_read(const struct device *dev,
 		LOG_WRN("attempt to read past device boundary");
 		return -EINVAL;
 	}
+	
+	const struct device *parent = data->parent;
+
+	ret = zdu0110xxx_get_buffers(parent, &cmd, NULL);
+	if (ret != 0) {
+		return ret;
+	}
 
 	cmd[cmd_len++] = ZDU_CMD_EEPROM_SET_CURR_LOC;
 	cmd[cmd_len++] = (uint8_t)offset;
 	cmd[cmd_len++] = ZDU_CMD_EEPROM_READ;
 	
-	ret = zdu0110xxx_send_command(data->parent, cmd, cmd_len, data_buf, len);
+	ret = zdu0110xxx_send_command(parent, cmd, cmd_len, data_buf, len);
 
 	if (ret != 0) {
 		LOG_ERR("failed to read EEPROM (offset=%08x len=%d err=%d)",
 			(unsigned int) offset, len, ret);
-		return -EINVAL;
+		err = -EINVAL;
 	}
 
-	return 0;
+	ret = zdu0110xxx_release_buffers(parent);
+
+	if (ret != 0) {
+		return ret;
+	}
+	
+	return err;
 }
 
 static int eeprom_zdu0110xxx_write(const struct device *dev,
@@ -72,7 +86,8 @@ static int eeprom_zdu0110xxx_write(const struct device *dev,
 	struct eeprom_zdu0110xxx_data *data = dev->data;
 
 	int ret;
-	uint8_t cmd[64];
+	int err = 0;
+	uint8_t *cmd;
 	size_t cmd_len = 0;
 	int index = 0;
 	int copy_len;
@@ -85,7 +100,14 @@ static int eeprom_zdu0110xxx_write(const struct device *dev,
 		LOG_WRN("attempt to write past device boundary");
 		return -EINVAL;
 	}
-	
+
+	const struct device *parent = data->parent;
+
+	ret = zdu0110xxx_get_buffers(parent, &cmd, NULL);
+	if (ret != 0) {
+		return ret;
+	}
+
 	cmd[cmd_len++] = ZDU_CMD_EEPROM_SET_CURR_LOC;
 	cmd[cmd_len++] = (uint8_t)offset;
 	
@@ -93,28 +115,35 @@ static int eeprom_zdu0110xxx_write(const struct device *dev,
 		if (index != 0) {
 			cmd_len = 0;
 		}
+
+		cmd[cmd_len++] = ZDU_CMD_EEPROM_WRITE;
 	
 		copy_len = len - index;
 		copy_len = copy_len > 64 - cmd_len ? 64 - cmd_len : copy_len;
+		copy_len = copy_len - cmd_len > 64 ? 64 - cmd_len : copy_len;
 		if (copy_len <= 0) {
 			break;
 		}
 		
-		cmd[cmd_len++] = ZDU_CMD_EEPROM_WRITE;
-
 		memcpy(&cmd[cmd_len], &((const uint8_t *)data_buf)[index], copy_len);
 		cmd_len += copy_len;
 		index += copy_len;
 
-		ret = zdu0110xxx_send_command(data->parent, cmd, cmd_len, NULL, 0);
+		ret = zdu0110xxx_send_command(parent, cmd, cmd_len, NULL, 0);
 		if (ret != 0) {
 			LOG_ERR("failed to write EEPROM (offset=%08x len=%d err=%d)",
 				(unsigned int) offset, len, ret);
-			return -EINVAL;
+			err = -EINVAL;
+			break;
 		}
 	}
+	
+	ret = zdu0110xxx_release_buffers(parent);
+	if (ret != 0) {
+		return ret;
+	}
 
-	return ret;
+	return err;
 }
 
 static size_t eeprom_zdu0110xxx_size(const struct device *dev)

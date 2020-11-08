@@ -78,6 +78,10 @@ extern "C" {
 #define ZDU_SUBCMD_UART_SOFT_RESET          0x0A
 
 
+int zdu0110xxx_get_buffers(const struct device *dev, uint8_t **cmd_buf, uint8_t **rsp_buf);
+int zdu0110xxx_release_buffers(const struct device *dev);
+
+
 uint8_t zdu0110xxx_get_slave_addr(const struct device *dev);
 
 

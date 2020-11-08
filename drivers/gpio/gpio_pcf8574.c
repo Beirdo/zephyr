@@ -441,7 +441,7 @@ static int gpio_pcf8574_pin_interrupt_configure(const struct device *dev,
 			LOG_ERR("PCF8574[0x%X]: failed to configure interrupt "
 				"on pin %d (%d)", config->i2c_slave_addr,
 				config->int_gpio_pin, ret);
-			goto err;
+			goto done;
 		}
 		data->interrupt_active = active;
 
@@ -453,7 +453,7 @@ static int gpio_pcf8574_pin_interrupt_configure(const struct device *dev,
 		}
 	}
 
-err:
+done:
 	k_sem_give(&data->lock);
 #endif /* CONFIG_GPIO_PCF8574_INTERRUPT */
 	return ret;
