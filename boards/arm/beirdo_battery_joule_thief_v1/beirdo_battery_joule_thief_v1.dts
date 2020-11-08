@@ -11,8 +11,8 @@
 	compatible = "beirdo,battery_joule_thief_v1", "atmel,samd11c14a", "atmel,samd11";
 
 	chosen {
-		zephyr,console = &uart0;
-		zephyr,shell-uart = &uart0;
+		zephyr,console = &sercom0;
+		zephyr,shell-uart = &sercom0;
 		zephyr,sram = &sram0;
 		zephyr,flash = &flash0;
 	};
@@ -178,19 +178,24 @@
 	};
 };
 
+&dmac {
+	status = "okay";
+};
+
 &cpu0 {
 	clock-frequency = <48000000>;
 };
 
-&tcc0 {
-	status = "okay";
-	compatible = "atmel,sam0-tcc-pwm";
-	/* Gives a maximum period of 1.4s */
-	prescaler = <4>;
-	#pwm-cells = <1>;
+&sercom0 {
+        status = "okay";
+        compatible = "atmel,sam0-uart";
+        current-speed = <115200>;
+        rxpo = <1>;
+        txpo = <0>;
+        hw-flow-control;
 };
 
-&sercom1 {
+&sercom2 {
 	status = "okay";
 	compatible = "atmel,sam0-i2c";
 	clock-frequency = <I2C_BITRATE_FAST>;
@@ -274,45 +279,6 @@
 		ngpios = <8>;
 	};
 
-	zdu0110: zdu0110rfx@5f {
-		status = "okay";
-		compatible = "zilog,zdu0110rfx";
-		label = "U38";
-		reg = <0x5f>;
-		interrupt-gpios = <&ioexp5 7 GPIO_ACTIVE_LOW>;
-		#address-cells = <1>;
-		#size-cells = <0>;
-
-		uart0: uart@0 {
-			status = "okay";
-			compatible = "zilog,zdu0110rfx_port";
-			label = "U38_UART0";
-			port-number = <0>;
-			current-speed = < 57600 >;
-			reg = <0>;
-		};
-
-/*		
-		eeprom@8 {
-			status = "okay";
-			compatible = "zilog,zdu0110xxx_eeprom";
-			label = "U38_EEPROM";
-			reg = <8>;
-		};
-
-		gpio@9 {
-			status = "okay";
-			compatible = "zilog,zdu0110rfx_gpio";
-			label = "U38_GPIO";
-			interrupt-gpios = <&ioexp5 6 GPIO_ACTIVE_LOW>;
-			gpio-controller;
-			#gpio-cells = <2>;
-			ngpios = <3>;
-			reg = <9>;
-		};
-*/
-	};
-	
 	adc0: mcp3428@69 {
 		status = "okay";
 		label = "U6";
@@ -377,5 +343,13 @@
         prechargep = <0x22>;
 	};
 	
+	pwm: pca9685@40 {
+		status = "okay";
+		compatible = "nxp,pca9685";
+		reg = <0x40>;
+		label = "U46";
+		prescaler = < 0x05 >;	/* approx 1kHz period */
+		#pwm-cells = < 2 >;
+	};
 };
 

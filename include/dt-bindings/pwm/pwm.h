@@ -19,6 +19,12 @@
 /** PWM pin inverted polarity (active-low pulse). */
 #define PWM_POLARITY_INVERTED	(1 << 0)
 
+/** Use the period_count input as a start delay (fixed period).
+ *  Used in pca9685 driver, which has inherent fixed period, but
+ *  adjustable on and off times.
+ */
+#define PWM_FLAG_START_DELAY    (1 << 1)
+
 /** @cond INTERNAL_HIDDEN */
 #define PWM_POLARITY_MASK	0x1
 /** @endcond */

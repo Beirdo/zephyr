@@ -319,7 +319,7 @@ static void mcp342x_sample_worker(struct k_work *work)
 		work, struct mcp342x_drv_data, sample_worker);
 
 	uint8_t channel = find_lsb_set(data->sequence_mask) - 1;
-	k_timeout_t delay;
+	k_timeout_t delay = K_USEC(0);
 
 	LOG_DBG("sampling channel %d", channel);
 

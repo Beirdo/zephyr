@@ -33,13 +33,17 @@ struct pwm_pca9685_config {
 
 	/** The slave address of the chip */
 	uint16_t i2c_slave_addr;
-	uint8_t stride[2];
+	
+	/** The prescaler register value */
+	uint16_t prescaler;
 };
 
 /** Runtime driver data */
 struct pwm_pca9685_drv_data {
 	/** Master I2C device */
 	const struct device *i2c_master;
+	
+	uint64_t cycles_per_sec;
 };
 
 #ifdef __cplusplus

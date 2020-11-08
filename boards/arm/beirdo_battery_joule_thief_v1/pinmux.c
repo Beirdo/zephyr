@@ -14,15 +14,17 @@ static int board_pinmux_init(const struct device *dev)
 
 	ARG_UNUSED(dev);
 
-#if (ATMEL_SAM0_DT_SERCOM_CHECK(1, atmel_sam0_i2c) && CONFIG_I2C_SAM0)
-	/* SERCOM1 on SDA=PA08, SCL=PA09 */
+#if (ATMEL_SAM0_DT_SERCOM_CHECK(0, atmel_sam0_uart) && CONFIG_I2C_SAM0)
+	/* SERCOM0 on SDA=PA08, SCL=PA09 */
 	pinmux_pin_set(muxa, 8, PINMUX_FUNC_D);
 	pinmux_pin_set(muxa, 9, PINMUX_FUNC_D);
 #endif
 
-#if (ATMEL_SAM0_DT_TCC_CHECK(0, atmel_sam0_tcc_pwm) && CONFIG_PWM_SAM0_TCC)
-	/* TCC0 on WO0=PB30 */
-	pinmux_pin_set(muxa, 30, PINMUX_FUNC_E);
+
+#if (ATMEL_SAM0_DT_SERCOM_CHECK(2, atmel_sam0_i2c) && CONFIG_I2C_SAM0)
+	/* SERCOM2 on SDA=PA08, SCL=PA09 */
+	pinmux_pin_set(muxa, 8, PINMUX_FUNC_D);
+	pinmux_pin_set(muxa, 9, PINMUX_FUNC_D);
 #endif
 
 	return 0;

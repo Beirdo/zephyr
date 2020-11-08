@@ -1,0 +1,21 @@
+# Copyright (c) 2020 Gavin Hurlbut
+# SPDX-License-Identifier: Apache-2.0
+
+description: NXP PCA9685 I2C PWM device
+
+compatible: "nxp,pca9685"
+
+include: [i2c-device.yaml, pwm-controller.yaml]
+
+properties:
+    "#pwm-cells":
+      const: 2
+      
+    prescaler:
+      type: int
+      required: true
+      description: Prescaler register value
+
+pwm-cells:
+  - channel
+  - flags
