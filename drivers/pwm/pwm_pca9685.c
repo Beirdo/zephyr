@@ -37,6 +37,9 @@
 /* Maximum PWM outputs */
 #define MAX_PWM_OUT		16
 
+/* Special case to turn all on/off */
+#define ALL_PWM_OUTPUT	0xFF
+
 /* How many ticks per one period */
 #define PWM_ONE_PERIOD_TICKS	4096
 
@@ -83,14 +86,18 @@ static int pwm_pca9685_pin_set_cycles(const struct device *dev, uint32_t pwm,
 		return -EINVAL;
 	}
 
-	if (pwm > MAX_PWM_OUT) {
+	if (pwm > MAX_PWM_OUT && pwm != ALL_PWM_OUTPUT) {
 		return -EINVAL;
 	}
 
 	inverted = ((flags & PWM_POLARITY_MASK) == PWM_POLARITY_INVERTED);
 
 	buf_len = 0;
-	buf[buf_len++] = REG_LED_ON_L(pwm);
+	if (pwm == ALL_PWM_OUTPUT) {
+		buf[buf_len++] = REG_ALL_LED_ON_L;
+	} else {
+		buf[buf_len++] = REG_LED_ON_L(pwm);
+	}
 
 	/* If either pulse_count > max ticks, treat PWM as 100%.
 	 * If pulse_count value == 0, treat it as 0%.
