@@ -55,13 +55,8 @@ static void xosc32k_init(void)
 
 static void osc32k_init(void)
 {
-#ifdef FUSES_OSC32K_CAL_ADDR
-	uint32_t fuse = *(uint32_t *)FUSES_OSC32K_CAL_ADDR;
-	uint32_t calib = (fuse & FUSES_OSC32K_CAL_Msk) >> FUSES_OSC32K_CAL_Pos;
-#else
-	uint32_t fuse = *(uint32_t *)FUSES_OSC32KCAL_ADDR;
-	uint32_t calib = (fuse & FUSES_OSC32KCAL_Msk) >> FUSES_OSC32KCAL_Pos;
-#endif
+	uint32_t fuse = *(uint32_t *)FUSES_OSC32K_ADDR;
+	uint32_t calib = (fuse & FUSES_OSC32K_Msk) >> FUSES_OSC32K_Pos;
 
 	SYSCTRL->OSC32K.reg = SYSCTRL_OSC32K_CALIB(calib) |
 			      SYSCTRL_OSC32K_STARTUP(0x6u) |
