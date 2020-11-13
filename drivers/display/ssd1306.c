@@ -41,7 +41,8 @@ LOG_MODULE_REGISTER(ssd1306, CONFIG_DISPLAY_LOG_LEVEL);
 #define SSD1306_CLOCK_DIV_RATIO		0x0
 #define SSD1306_CLOCK_FREQUENCY		0x8
 #define SSD1306_PANEL_VCOM_DESEL_LEVEL	0x20
-#define SSD1306_PANEL_PUMP_VOLTAGE	SSD1306_SET_PUMP_VOLTAGE_90
+
+#define SH1106_PANEL_PUMP_VOLTAGE	SH1106_SET_PUMP_VOLTAGE_90
 
 #ifndef SSD1306_ADDRESSING_MODE
 #define SSD1306_ADDRESSING_MODE		(SSD1306_SET_MEM_ADDRESSING_HORIZONTAL)
@@ -58,6 +59,7 @@ struct ssd1306_data {
 	uint8_t contrast;
 	uint8_t scan_mode;
 };
+
 
 #if DT_INST_ON_BUS(0, i2c)
 static inline int ssd1306_write_bus(const struct device *dev,
@@ -96,6 +98,13 @@ static inline int ssd1306_write_bus(const struct device *dev,
 	return errno;
 }
 #endif
+
+
+int ssd1306_display_write(const struct device *dev, uint8_t *buf, size_t len, bool command)
+{
+	return ssd1306_write_bus(dev, buf, len, command);
+}
+
 
 static inline int ssd1306_set_panel_orientation(const struct device *dev)
 {
@@ -143,15 +152,23 @@ static inline int ssd1306_set_hardware_config(const struct device *dev)
 static inline int ssd1306_set_charge_pump(const struct device *dev)
 {
 	uint8_t cmd_buf[] = {
-#if defined(CONFIG_SSD1306_DEFAULT)
+#ifdef CONFIG_SSD1306_DEFAULT
 		SSD1306_SET_CHARGE_PUMP_ON,
+#ifdef CONFIG_SSD1306_ENABLE_CHARGE_PUMP
 		SSD1306_SET_CHARGE_PUMP_ON_ENABLED,
+#else
+		SSD1306_SET_CHARGE_PUMP_ON_DISABLED,
 #endif
-#if defined(CONFIG_SSD1306_SH1106_COMPATIBLE)
+#endif
+#ifdef CONFIG_SSD1306_SH1106_COMPATIBLE
 		SH1106_SET_DCDC_MODE,
+#ifdef CONFIG_SSD1306_ENABLE_CHARGE_PUMP
 		SH1106_SET_DCDC_ENABLED,
+		SH1106_PANEL_PUMP_VOLTAGE,
+#else
+		SH1106_SET_DCDC_DISABLED,
 #endif
-		SSD1306_PANEL_PUMP_VOLTAGE,
+#endif
 	};
 
 	return ssd1306_write_bus(dev, cmd_buf, sizeof(cmd_buf), true);

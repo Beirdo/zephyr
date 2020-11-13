@@ -35,6 +35,12 @@ endchoice
 config SSD1306_REVERSE_MODE
 	bool "SSD1306 reverse mode"
 	help
-	  SSD16XX reverse video mode.
+	  SSD1306 reverse video mode.
+	  
+config SSD1306_ENABLE_CHARGE_PUMP
+	bool "SS1306 enable charge pump"
+	default true
+	help
+	  SSD1306 enable onboard charge pump
 
 endif # SSD1306

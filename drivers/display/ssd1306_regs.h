@@ -99,10 +99,11 @@
 #define SH1106_SET_DCDC_DISABLED		0x8a
 #define SH1106_SET_DCDC_ENABLED			0x8b
 
-#define SSD1306_SET_PUMP_VOLTAGE_64		0x30
-#define SSD1306_SET_PUMP_VOLTAGE_74		0x31
-#define SSD1306_SET_PUMP_VOLTAGE_80		0x32
-#define SSD1306_SET_PUMP_VOLTAGE_90		0x33
+/* The datasheet for the SH1106 has these, but not the datasheet for SSD1306 */
+#define SH1106_SET_PUMP_VOLTAGE_64		0x30
+#define SH1106_SET_PUMP_VOLTAGE_74		0x31
+#define SH1106_SET_PUMP_VOLTAGE_80		0x32
+#define SH1106_SET_PUMP_VOLTAGE_90		0x33
 
 /*
  * Read modify write
