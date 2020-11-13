@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Sean Nyekjaer
+ * Copyright (c) 2020 Gavin Hurlbut
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -16,9 +16,6 @@ static int board_pinmux_init(const struct device *dev)
 	ARG_UNUSED(dev);
 	ARG_UNUSED(muxb);
 	
-	/* EIC EXTINT0 on PA00 */
-	pinmux_pin_set(muxa, 0, PINMUX_FUNC_A);
-
 #if (ATMEL_SAM0_DT_SERCOM_CHECK(0, atmel_sam0_uart) && CONFIG_UART_SAM0)
 	/* SERCOM0 on TX=PA04, RX=PA05, RTS=PA06, CTS=PA07 */
 	pinmux_pin_set(muxa, 4, PINMUX_FUNC_D);
@@ -81,7 +78,6 @@ static int board_pinmux_init(const struct device *dev)
 #if (ATMEL_SAM0_DT_SERCOM_CHECK(5, atmel_sam0_i2c) && CONFIG_I2C_SAM0)
 #warning Pin mapping may not be configured
 #endif
-
 
 	/* SWCLK on PA30, SWDIO on PA31 */
 	pinmux_pin_set(muxa, 30, PINMUX_FUNC_G);

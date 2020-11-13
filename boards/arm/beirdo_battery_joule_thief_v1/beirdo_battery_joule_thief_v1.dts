@@ -139,7 +139,17 @@
 			gpios = <&ioexp6 6 GPIO_ACTIVE_LOW>;
 			label = "LED Out Red";
 		};
-
+		
+		led_active {
+			gpios = <&ioexp6 3 GPIO_ACTIVE_LOW>;
+			label = "LED Active Red";
+		};
+		
+		/* Not precisely an LED */
+		pwm_oe {
+		    gpios = <&porta 1 GPIO_ACTIVE_LOW>;
+		    label = "PWM Output Enable";
+		};
 	};
 
 	buttons {
@@ -183,11 +193,11 @@
 };
 
 &sram0 {
-	reg = <0x20000000 0x2000>;
+	reg = <0x20000000 0x4000>;
 };
 
 &flash0 {
-	reg = <0 0x10000>;
+	reg = <0 0x20000>;
 };
 
 
@@ -216,6 +226,7 @@
 		#gpio-cells = <2>;
 		interrupt-gpios = <&ioexp5 0 GPIO_ACTIVE_LOW>;
 		ngpios = <16>;
+		gpio-reserved-ranges = <4 4>, <14 2>;
 	};
 
 	ioexp1: mcp23017@21 {
@@ -227,6 +238,7 @@
 		#gpio-cells = <2>;
 		interrupt-gpios = <&ioexp5 1 GPIO_ACTIVE_LOW>;
 		ngpios = <16>;
+		gpio-reserved-ranges = <4 4>, <14 2>;
 	};
 
 	ioexp2: mcp23017@22 {
@@ -238,6 +250,7 @@
 		#gpio-cells = <2>;
 		interrupt-gpios = <&ioexp5 2 GPIO_ACTIVE_LOW>;
 		ngpios = <16>;
+		gpio-reserved-ranges = <4 4>, <14 2>;
 	};
 
 	ioexp3: mcp23017@23 {
@@ -249,6 +262,7 @@
 		#gpio-cells = <2>;
 		interrupt-gpios = <&ioexp5 3 GPIO_ACTIVE_LOW>;
 		ngpios = <16>;
+		gpio-reserved-ranges = <4 4>, <14 2>;
 	};
 
 	ioexp4: mcp23017@24 {
@@ -260,6 +274,7 @@
 		#gpio-cells = <2>;
 		interrupt-gpios = <&ioexp5 4 GPIO_ACTIVE_LOW>;
 		ngpios = <16>;
+		gpio-reserved-ranges = <4 4>, <14 2>;
 	};
 
 	ioexp5: mcp23017@25 {
@@ -269,8 +284,9 @@
 		reg = <0x25>;
 		gpio-controller;
 		#gpio-cells = <2>;
-		interrupt-gpios = <&porta 2 GPIO_ACTIVE_LOW>;
+		interrupt-gpios = <&porta 0 GPIO_ACTIVE_LOW>;
 		ngpios = <16>;
+		gpio-reserved-ranges = <6 2>, <14 2>;
 	};
 
 	ioexp6: pcf8574@26 {
@@ -324,7 +340,7 @@
 		reg = <0x6d>;
 	};
 	
-	adc_out: mcp3425@68 {
+	adc5: mcp3425@68 {
 		status = "okay";
 		label = "U49";
 		compatible = "microchip,mcp3425";
@@ -354,7 +370,7 @@
 		reg = <0x40>;
 		label = "U46";
 		prescaler = < 0x05 >;	/* approx 1kHz period */
-		#pwm-cells = < 2 >;
+		#pwm-cells = <2>;
 	};
 };
 
