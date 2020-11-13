@@ -1,0 +1,8 @@
+# SAM D11 Xplained Pro Board configuration
+
+# Copyright (c) 2020 Gavin Hurlbut
+# SPDX-License-Identifier: Apache-2.0
+
+config BOARD_ATSAMD11_XPRO
+	bool "SAM D11 Xplained Pro"
+	depends on SOC_PART_NUMBER_SAMD11D14AM
