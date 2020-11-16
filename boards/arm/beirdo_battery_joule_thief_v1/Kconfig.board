@@ -1,7 +1,0 @@
-# Beirdo's Battery Joule Thief v1 Config
-# Copyright (c) 2020 Gavin Hurlbut
-# SPDX-License-Identifier: Apache-2.0
-
-config BOARD_BEIRDO_BATTERY_JOULE_THIEF_V1
-	bool "Beirdo's Battery Joule Thief v1"
-	depends on SOC_PART_NUMBER_SAMD21E17A

@@ -1,8 +1,0 @@
-# Beirdo's Battery Joule Thief v1 board config
-
-# Copyright (c) 2020 Gavin Hurlbut
-# SPDX-License-Identifier: Apache-2.0
-
-config BOARD
-	default "battery_joule_thief_v1"
-	depends on BOARD_BEIRDO_BATTERY_JOULE_THIEF_V1
