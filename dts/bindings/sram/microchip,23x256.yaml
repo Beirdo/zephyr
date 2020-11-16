@@ -1,0 +1,12 @@
+# Copyright (c) 2020 Gavin Hurlbut
+# SPDX-License-Identifier: Apache-2.0
+
+description: Microchip 23A256/23K256 (or compatible) SPI SRAM
+
+include: sram-spi.yaml
+
+compatible: microchip,23x256
+
+properties:
+    size:
+        const: 32768

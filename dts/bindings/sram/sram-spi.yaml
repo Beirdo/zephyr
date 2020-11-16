@@ -1,0 +1,29 @@
+# Copyright (c) 2020 Gavin Hurlbut
+# SPDX-License-Identifier: Apache-2.0
+
+# Common fields for SPI EEPROM devices
+
+include: spi-base.yaml
+
+properties:
+    address-width:
+      type: int
+      required: true
+      description: SRAM address width in bits
+    wp-gpios:
+      type: phandle-array
+      required: false
+      description: |
+        GPIO to which the write-protect pin of the chip is connected.
+
+        The device will interpret this signal as active-low.
+    size:
+      type: int
+      required: true
+      description: Total SRAM size in bytes
+    read-only:
+      type: boolean
+      required: false
+      description: Disable writes to the SRAM
+    label:
+      required: true

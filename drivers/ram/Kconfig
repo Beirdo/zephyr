@@ -1,0 +1,63 @@
+# off-SOC RAM driver configuration options
+
+# Copyright (c) 2020 Gavin Hurlbut
+# SPDX-License-Identifier: Apache-2.0
+
+menuconfig RAM
+	bool "Off-SOC RAM hardware support"
+	help
+	  Enable support for Off-SOC RAM hardware.
+
+if RAM
+
+module = RAM
+module-str = ram
+source "subsys/logging/Kconfig.template.log_config"
+
+config RAM_SHELL
+	bool "Enable RAM shell"
+	default y
+	depends on SHELL
+	help
+	  Enable the RAM shell with RAM related commands.
+
+config RAM_SHELL_BUFFER_SIZE
+	int "RAM shell buffer size"
+	default 256
+	depends on RAM_SHELL
+	help
+	  Size of the buffer used for RAM read/write commands in
+	  the RAM shell.
+
+source "drivers/eeprom/Kconfig.mcp23x"
+
+config RAM_SIMULATOR
+	bool "Simulated RAM driver"
+	select STATS
+	select STATS_NAMES
+	help
+	  Enable Simulated RAM driver.
+
+config RAM_SIMULATOR_SIMULATE_TIMING
+	bool "Enable hardware timing simulation"
+	depends on EEPROM_SIMULATOR
+	help
+	  Enable Simulated hardware timing.
+
+if RAM_SIMULATOR_SIMULATE_TIMING
+
+config RAM_SIMULATOR_MIN_READ_TIME_US
+	int
+	prompt "Minimum read time (µS)"
+	default 2
+	range 1 1000000
+
+config RAM_SIMULATOR_MIN_WRITE_TIME_US
+	int
+	prompt "Minimum write time (µS)"
+	default 100
+	range 1 1000000
+
+endif # RAM_SIMULATOR_SIMULATE_TIMING
+
+endif # RAM

@@ -1,0 +1,12 @@
+# Copyright (c) 2020 Gavin Hurlbut
+# SPDX-License-Identifier: Apache-2.0
+
+config RAM_MCP23X
+	bool
+	help
+	  Enable support for Microchip 23Axxx.23Kxxx (and compatible) SPI SRAMs.
+
+config RAM_MCP23X_INIT_PRIORITY
+	int "23xxxx RAM init priority"
+	default 75
+	depends on RAM_MCP23X

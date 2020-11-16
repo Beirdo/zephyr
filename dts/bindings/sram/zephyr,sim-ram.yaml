@@ -1,0 +1,20 @@
+# Copyright (c) 2020 Gavin Hurlbut
+# SPDX-License-Identifier: Apache-2.0
+
+description: Zephyr Simulated Off-SOC RAM device
+
+compatible: "zephyr,sim-ram"
+
+include: base.yaml
+
+properties:
+    size:
+      type: int
+      required: false
+      description: Total EEPROM size in bytes
+    read-only:
+      type: boolean
+      required: false
+      description: Disable writes to the EEPROM
+    label:
+      required: true
